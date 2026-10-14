@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -85,3 +86,12 @@ class LeaseAcceptanceResponse(BaseModel):
     lease_id: int
     status: str
     rent_charge_id: int
+
+
+class NotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    channel: str
+    message: str
+    created_at: datetime

@@ -41,6 +41,7 @@ Demo accounts created by `seed.py`:
 | POST | `/leases/from-application/{application_id}` | Landlord | Create a lease for an approved application |
 | GET | `/leases/{lease_id}/pdf` | Lease parties | Download the lease PDF |
 | POST | `/leases/{lease_id}/accept` | Tenant | Accept a lease and create its first rent charge |
+| GET | `/notifications/me` | Authenticated | List the current user's latest event-triggered alerts |
 
 ## Design notes
 
@@ -48,7 +49,8 @@ Demo accounts created by `seed.py`:
   in `app/services`.
 - Passwords are stored as salted PBKDF2 hashes. Login tokens are signed,
   expiring bearer tokens; configure `LANDKEEP_SECRET_KEY` for deployments.
-- The credit check and notification service are intentionally demonstrative.
-  Replace their mock behavior before production use.
+- Notifications are currently stored as in-app alerts; email and SMS delivery
+  providers have not been connected. The credit check is a mock and must be
+  replaced before production use.
 - `models.py` defines the domain tables used by the current API. New schema changes should
   use migrations before deploying against an existing PostgreSQL database.

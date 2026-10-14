@@ -1,16 +1,26 @@
-# React + Vite
+# Land-Keep Alerts
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The Land-Keep alert inbox frontend, built with React and Vite.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Requires Node.js 20.19+ or 22.12+.
 
-## React Compiler
+1. Start the backend by following [the backend setup guide](../backend/README.md).
+2. From this directory, install frontend dependencies and start Vite:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+   ```powershell
+   npm install
+   Copy-Item .env.example .env.local
+   npm run dev
+   ```
 
-## Expanding the Oxlint configuration
+3. Open the URL printed by Vite and sign in with a Land-Keep account.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Set `VITE_API_URL` in `.env.local` if the backend is not running at
+`http://127.0.0.1:8000`. The inbox currently displays in-app alerts generated
+by application and lease events. Email, SMS, scheduled rent reminders, and
+predictive alerts are not implemented yet.
+
+Run `npm run build` to create a production build and `npm run lint` to lint the
+frontend.
