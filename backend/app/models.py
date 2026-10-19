@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """LandKeep data model.
 
 Design rules:
@@ -29,12 +30,21 @@ APPLICATION_STATUSES = ("submitted", "under_review", "approved", "rejected", "le
 MAINTENANCE_STATUSES = ("open", "in_progress", "resolved")
 CATEGORIES = ("plumbing", "electrical", "security", "general")
 URGENCIES = ("high", "low")
+=======
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database import Base
+>>>>>>> 254c9b89f9d0f22a8e6cead7e0f8cab6807b63e3
 
 
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+<<<<<<< HEAD
     role: Mapped[str] = mapped_column(String(20), index=True)
     full_name: Mapped[str] = mapped_column(String(120))
     email: Mapped[str] = mapped_column(String(160), unique=True, index=True)
@@ -54,12 +64,21 @@ class Property(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     units: Mapped[list["Unit"]] = relationship(back_populates="property")
+=======
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    full_name: Mapped[str] = mapped_column(String(120))
+    password_hash: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(20), index=True)
+    id_number: Mapped[str] = mapped_column(String(13), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+>>>>>>> 254c9b89f9d0f22a8e6cead7e0f8cab6807b63e3
 
 
 class Unit(Base):
     __tablename__ = "units"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+<<<<<<< HEAD
     property_id: Mapped[int] = mapped_column(ForeignKey("properties.id"), index=True)
     unit_number: Mapped[str] = mapped_column(String(20))
     bedrooms: Mapped[int] = mapped_column(Integer)
@@ -109,12 +128,42 @@ class ApplicationStatusHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     application: Mapped["TenantApplication"] = relationship(back_populates="history")
+=======
+    landlord_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    title: Mapped[str] = mapped_column(String(150))
+    address: Mapped[str] = mapped_column(String(255))
+    monthly_rent: Mapped[float] = mapped_column(Numeric(10, 2))
+    bedrooms: Mapped[int] = mapped_column(Integer, default=1)
+    is_vacant: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+
+class Application(Base):
+    __tablename__ = "applications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    unit_id: Mapped[int] = mapped_column(ForeignKey("units.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    consent_given: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class CreditCheck(Base):
+    __tablename__ = "credit_checks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), unique=True)
+    score: Mapped[int] = mapped_column(Integer)
+    recommendation: Mapped[str] = mapped_column(String(20))
+    checked_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+>>>>>>> 254c9b89f9d0f22a8e6cead7e0f8cab6807b63e3
 
 
 class Lease(Base):
     __tablename__ = "leases"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+<<<<<<< HEAD
     unit_id: Mapped[int] = mapped_column(ForeignKey("units.id"), index=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     application_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tenant_applications.id"))
@@ -127,6 +176,23 @@ class Lease(Base):
     pdf_path: Mapped[Optional[str]] = mapped_column(String(255))
     accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)  # tenant accepted the lease
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+=======
+    application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), unique=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    unit_id: Mapped[int] = mapped_column(ForeignKey("units.id"), index=True)
+    monthly_rent: Mapped[float] = mapped_column(Numeric(10, 2))
+    status: Mapped[str] = mapped_column(String(20), default="pending_acceptance")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class LeaseAcceptance(Base):
+    __tablename__ = "lease_acceptances"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lease_id: Mapped[int] = mapped_column(ForeignKey("leases.id"), unique=True)
+    accepted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    accepted: Mapped[bool] = mapped_column(Boolean, default=True)
+>>>>>>> 254c9b89f9d0f22a8e6cead7e0f8cab6807b63e3
 
 
 class RentCharge(Base):
@@ -134,6 +200,7 @@ class RentCharge(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     lease_id: Mapped[int] = mapped_column(ForeignKey("leases.id"), index=True)
+<<<<<<< HEAD
     period: Mapped[date] = mapped_column(Date)  # first day of the billing month
     amount_due: Mapped[float] = mapped_column(Float)
     due_date: Mapped[date] = mapped_column(Date, index=True)
@@ -185,13 +252,28 @@ class ReminderLog(Base):
 class Notification(Base):
     """Every email/SMS the system sends, whatever the provider (console, SMTP, Twilio)."""
 
+=======
+    amount: Mapped[float] = mapped_column(Numeric(10, 2))
+    due_date: Mapped[datetime] = mapped_column(DateTime)
+    status: Mapped[str] = mapped_column(String(20), default="due")
+
+
+class Notification(Base):
+>>>>>>> 254c9b89f9d0f22a8e6cead7e0f8cab6807b63e3
     __tablename__ = "notifications"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+<<<<<<< HEAD
     channel: Mapped[str] = mapped_column(String(20))  # email, sms (whatsapp later)
     template: Mapped[str] = mapped_column(String(60))
     subject: Mapped[Optional[str]] = mapped_column(String(200))
     body: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="sent")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+=======
+    channel: Mapped[str] = mapped_column(String(20))
+    message: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+>>>>>>> 254c9b89f9d0f22a8e6cead7e0f8cab6807b63e3
