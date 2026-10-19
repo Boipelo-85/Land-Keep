@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-<<<<<<< HEAD
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -19,24 +20,11 @@
     "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^6.1.2",
-    "vite": "^8.3.4"
-=======
-    "lint": "oxlint",
-    "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
-  },
-  "devDependencies": {
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^6.1.1",
+    "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.81.0",
     "typescript": "^5.9.3",
-    "vite": "^8.3.0"
->>>>>>> 254c9b89f9d0f22a8e6cead7e0f8cab6807b63e3
+    "vite": "^8.3.4"
   }
 }

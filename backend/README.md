@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # LandKeep backend (part 1: data foundation)
 
 One system for the whole tenant journey: apply, credit check, approve, notify, lease, rent, maintenance.
@@ -27,6 +26,71 @@ Open http://localhost:8000/docs. Click **Authorize**, paste a token from `POST /
 Emails and SMS are printed to the terminal and saved in the `notifications` table.
 
 Run the tests: `python -m pytest tests -q`
+
+### Agency-scoped rent reminders
+
+For reminders, an existing landlord account is the agency boundary: its
+properties, leases, and reminder logs are scoped through `Property.landlord_id`.
+New agencies default to day 3 before month end, Africa/Johannesburg, and the
+channel strategy `fallback` in WhatsApp → SMS → email order. It sends through
+the first opted-in channel that succeeds, avoiding duplicate cross-channel
+messages. An agency can select `all` to send on every opted-in channel.
+
+Copy `.env.example` to `.env`. The API loads it with python-dotenv. Local
+development defaults to console mode, which previews each selected channel but
+does not call providers. To send externally set `LANDKEEP_REMINDER_CONSOLE=false`
+and configure provider values in `.env`.
+
+Landlords configure their own policy with `PUT /reminders/settings`, for example:
+
+```json
+{
+  "reminder_days_before_month_end": 3,
+  "reminder_windows": [3, 1],
+  "channel_order": ["whatsapp", "sms", "email"],
+  "channel_strategy": "fallback",
+  "agency_name": "Example Rentals",
+  "contact_email": "rent@example.test",
+  "contact_phone": "+27115550100"
+}
+```
+
+Tenants manage their own consent at `PUT /reminders/preferences` with
+`whatsapp_opt_in`, `sms_opt_in`, and `email_opt_in` booleans. All start false.
+Authenticated landlords can preview only their agency with
+`POST /reminders/run?dry_run=true`; add `&window_days=3` to preview the configured
+copy for that window without sending or writing logs. A real manual run only
+operates on today's configured window: `POST /reminders/run?dry_run=false`.
+`GET /reminders/log` returns only the caller's agency records.
+
+#### Provider setup
+
+- **Twilio SMS:** set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and
+  `TWILIO_SMS_FROM` to the account credentials and SMS-capable sender.
+- **Twilio WhatsApp:** enable a WhatsApp sender, create and get approval for a
+  Content Template, then set `TWILIO_WHATSAPP_FROM` and
+  `TWILIO_WHATSAPP_CONTENT_SID` to its sender and `HX...` SID. The template
+  body should use `{{6}}: {{1}}, {{3}} outstanding for {{2}}. Due {{4}};
+  {{5}} days left. Contact {{7}}. {{8}}`. These variables are tenant,
+  property/unit, amount, due date, days remaining, agency, agency contact, and
+  opt-out text respectively.
+  Set the Twilio inbound webhook to `/reminders/twilio/inbound` and configure
+  `LANDKEEP_PUBLIC_BASE_URL` so signature verification works behind a proxy;
+  STOP and related keywords clear the matching SMS or WhatsApp consent.
+- **Email:** configure `SMTP_HOST`, `SMTP_PORT` (587 by default),
+  `SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_FROM`; delivery uses STARTTLS.
+- `LANDKEEP_PROVIDER_MAX_ATTEMPTS`,
+  `LANDKEEP_PROVIDER_RETRY_BASE_SECONDS`, and
+  `LANDKEEP_PROVIDER_MIN_INTERVAL_SECONDS` configure bounded exponential
+  retries for Twilio 429 / SMTP temporary 4xx errors and a per-process send
+  interval.
+
+`RentCharge` and `Payment` remain the source of the current balance. A lease
+without a charge for the current month is treated as owing its existing
+`monthly_rent`. Partial-month leases are selected by date overlap; because the
+current rent model does not represent proration, their charge follows the
+existing full-month amount. Attempt records are unique by lease, month, window,
+and channel, and live in a new table so prior SQLite data is left intact.
 
 ### The applicant-to-tenant flow
 
@@ -64,61 +128,3 @@ Run the tests: `python -m pytest tests -q`
 2. Rent reminder job (reuses the notification service)
 3. ML classifier trained from `data/maintenance_requests.csv`
 4. Analytics endpoints and the React screens
-=======
-# Land-Keep backend
-
-FastAPI backend for the Land-Keep rental application demo. SQLite is used by
-default; set `DATABASE_URL` to a SQLAlchemy PostgreSQL URL to use PostgreSQL.
-
-## Run locally
-
-Requires Python 3.10 or newer. From this directory:
-
-```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-py -m pip install -r requirements.txt
-py seed.py
-py -m uvicorn app.main:app --reload
-```
-
-The API is available at `http://127.0.0.1:8000`; interactive API docs are at
-`http://127.0.0.1:8000/docs`.
-
-Demo accounts created by `seed.py`:
-
-| Role | Email | Password |
-| --- | --- | --- |
-| Landlord | `landlord@example.com` | `LandKeep123!` |
-| Tenant | `tenant@example.com` | `LandKeep123!` |
-
-`seed.py` creates the tables, demo users and vacant units.
-
-## Endpoint overview
-
-| Method | Path | Access | Purpose |
-| --- | --- | --- | --- |
-| POST | `/auth/register` | Public | Create a tenant or landlord account |
-| POST | `/auth/login` | Public | Obtain a bearer token |
-| GET | `/auth/me` | Authenticated | Return the current account |
-| GET | `/units` | Authenticated | List vacant units |
-| POST | `/applications` | Tenant | Apply for a vacant unit and run a mock credit check |
-| GET | `/applications/{application_id}` | Applicant / landlord | Track an application |
-| POST | `/applications/{application_id}/decision` | Landlord | Record an approve, review, or decline decision |
-| POST | `/leases/from-application/{application_id}` | Landlord | Create a lease for an approved application |
-| GET | `/leases/{lease_id}/pdf` | Lease parties | Download the lease PDF |
-| POST | `/leases/{lease_id}/accept` | Tenant | Accept a lease and create its first rent charge |
-| GET | `/notifications/me` | Authenticated | List the current user's latest event-triggered alerts |
-
-## Design notes
-
-- Routers handle HTTP concerns; business decisions and lease side effects live
-  in `app/services`.
-- Passwords are stored as salted PBKDF2 hashes. Login tokens are signed,
-  expiring bearer tokens; configure `LANDKEEP_SECRET_KEY` for deployments.
-- Notifications are currently stored as in-app alerts; email and SMS delivery
-  providers have not been connected. The credit check is a mock and must be
-  replaced before production use.
-- `models.py` defines the domain tables used by the current API. New schema changes should
-  use migrations before deploying against an existing PostgreSQL database.
->>>>>>> 254c9b89f9d0f22a8e6cead7e0f8cab6807b63e3

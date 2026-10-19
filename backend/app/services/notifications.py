@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """One place to send every email and SMS.
 
 Every message is saved in the Notification table and delivered through
@@ -66,21 +65,3 @@ def send_notification(db: Session, user: m.User, template: str,
         db.add(note)
         sent.append(note)
     return sent
-=======
-import logging
-
-from sqlalchemy.orm import Session
-
-from app.models import Notification
-
-logger = logging.getLogger(__name__)
-
-
-def notify(db: Session, user_id: int, message: str, channel: str = "in_app") -> Notification:
-    if channel not in {"in_app", "email", "sms"}:
-        raise ValueError("Notification channel must be in_app, email, or sms")
-    notification = Notification(user_id=user_id, channel=channel, message=message)
-    db.add(notification)
-    logger.info("Recorded %s alert for user %s", channel, user_id)
-    return notification
->>>>>>> 254c9b89f9d0f22a8e6cead7e0f8cab6807b63e3

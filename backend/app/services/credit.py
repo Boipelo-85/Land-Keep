@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """Credit check service.
 
 The rest of the app only talks to `CreditCheckService`. Today it is backed by
@@ -50,22 +49,3 @@ def recommend(score: int, monthly_income: float, monthly_rent: float) -> str:
     if score >= APPROVE_MIN_SCORE and ratio <= MAX_RENT_TO_INCOME:
         return "approve"
     return "review"
-=======
-from app.models import User
-
-
-def run_credit_check(id_number: str) -> tuple[int, str]:
-    """Return a stable demo score; never call this a real credit-bureau result."""
-    score = 500 + sum(int(digit) for digit in id_number) % 351
-    if score >= 700:
-        recommendation = "approved"
-    elif score >= 600:
-        recommendation = "review"
-    else:
-        recommendation = "declined"
-    return score, recommendation
-
-
-def recommendation_for(applicant: User) -> tuple[int, str]:
-    return run_credit_check(applicant.id_number)
->>>>>>> 254c9b89f9d0f22a8e6cead7e0f8cab6807b63e3
