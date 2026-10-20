@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../store/authSlice'
 
 const LINKS = {
-  landlord: [{ to: '/landlord/applications', label: 'Applications' }],
+  landlord: [{ to: '/landlord/applications', label: 'Applications' }, { to: '/landlord/maintenance', label: 'Maintenance' }],
   tenant: [
     { to: '/units', label: 'Find a unit' },
     { to: '/applications', label: 'My applications' },
@@ -14,7 +14,7 @@ const LINKS = {
 
 // Parts of the platform that are designed for but not built yet.
 const COMING = {
-  landlord: ['Rent', 'Maintenance', 'Insights'],
+  landlord: ['Rent', 'Insights'],
   tenant: ['Pay rent'],
 }
 

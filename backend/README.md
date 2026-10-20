@@ -8,6 +8,7 @@ One system for the whole tenant journey: apply, credit check, approve, notify, l
 cd landkeep/backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+alembic upgrade head                               # apply versioned schema migrations
 python seed.py
 ```
 

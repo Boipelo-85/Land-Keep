@@ -2,7 +2,9 @@
 from datetime import date, datetime
 from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from .phone_numbers import normalize_sa_phone
 
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 
@@ -12,6 +14,16 @@ class RegisterIn(BaseModel):
     email: str = Field(pattern=EMAIL_PATTERN)
     phone: Optional[str] = Field(default=None, max_length=30)
     password: str = Field(min_length=8, max_length=100)
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or not value.strip():
+            return None
+        try:
+            return normalize_sa_phone(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 class LoginIn(BaseModel):
@@ -50,11 +62,15 @@ class MaintenanceOut(BaseModel):
 
 
 class AgencyReminderSettingsIn(BaseModel):
+    reminders_enabled: Optional[bool] = None
     reminder_days_before_month_end: Optional[int] = Field(default=None, ge=0, le=31)
     reminder_windows: Optional[list[Annotated[int, Field(ge=0, le=31)]]] = Field(
         default=None, min_length=1, max_length=8
     )
     channel_order: Optional[list[Literal["whatsapp", "sms", "email"]]] = Field(
+        default=None, min_length=1, max_length=3
+    )
+    enabled_channels: Optional[list[Literal["whatsapp", "sms", "email"]]] = Field(
         default=None, min_length=1, max_length=3
     )
     channel_strategy: Optional[Literal["fallback", "all"]] = None

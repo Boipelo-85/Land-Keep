@@ -78,6 +78,13 @@ export const api = {
 
   myMaintenance: () => json('/maintenance/mine'),
   reportMaintenance: (formData) => json('/maintenance', { method: 'POST', body: formData }),
+  startMaintenanceChat: (body) => json('/maintenance/conversations', { method: 'POST', body }),
+  maintenanceChat: (id) => json(`/maintenance/conversations/${id}`),
+  sendMaintenanceChat: (id, body) => json(`/maintenance/conversations/${id}/messages`, { method: 'POST', body }),
+  resolveMaintenanceChat: (id, body) => json(`/maintenance/conversations/${id}/resolve`, { method: 'POST', body }),
+  escalateMaintenanceChat: (id) => json(`/maintenance/conversations/${id}/escalate`, { method: 'POST' }),
+  maintenanceRequests: () => json('/maintenance/requests'),
+  updateMaintenanceStatus: (id, status) => json(`/maintenance/requests/${id}/status`, { method: 'PATCH', body: { status } }),
 
   // The PDF route needs the login token, so fetch it and save it as a file.
   async downloadLeasePdf(id) {
@@ -95,6 +102,11 @@ export const api = {
   // Photos need the login token, so fetch as a blob URL for <img>.
   async maintenancePhotoUrl(id) {
     const blob = await (await send(`/maintenance/${id}/photo`)).blob()
+    return URL.createObjectURL(blob)
+  },
+  async maintenanceAttachmentUrl(id) {
+    const { url } = await json(`/maintenance/attachments/${id}/link`)
+    const blob = await (await send(url.replace('/api', ''))).blob()
     return URL.createObjectURL(blob)
   },
 }

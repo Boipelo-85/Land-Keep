@@ -29,6 +29,10 @@ APPLICATION_STATUSES = ("submitted", "under_review", "approved", "rejected", "le
 MAINTENANCE_STATUSES = ("open", "in_progress", "resolved")
 CATEGORIES = ("plumbing", "electrical", "security", "general")
 URGENCIES = ("high", "low")
+CHAT_MAINTENANCE_CATEGORIES = (
+    "plumbing", "electrical", "appliance", "roof_damp", "doors_locks", "pests", "other"
+)
+CHAT_MAINTENANCE_URGENCIES = ("low", "medium", "high", "emergency")
 
 
 class User(Base):
@@ -39,6 +43,12 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(120))
     email: Mapped[str] = mapped_column(String(160), unique=True, index=True)
     phone: Mapped[Optional[str]] = mapped_column(String(30))
+    # Automated rent reminder consent belongs to the tenant record.
+    whatsapp_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    sms_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    email_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    consent_recorded_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    consent_recorded_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     password_hash: Mapped[str] = mapped_column(String(300))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
@@ -61,10 +71,14 @@ class AgencyReminderSettings(Base):
     __tablename__ = "agency_reminder_settings"
     id: Mapped[int] = mapped_column(primary_key=True)
     agency_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+    reminders_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     reminder_days_before_month_end: Mapped[int] = mapped_column(Integer, default=3)
     reminder_windows: Mapped[Optional[list[int]]] = mapped_column(JSON, nullable=True)
     channel_order: Mapped[list[str]] = mapped_column(JSON, default=lambda: ["whatsapp", "sms", "email"])
-    channel_strategy: Mapped[str] = mapped_column(String(20), default="fallback")
+    enabled_channels: Mapped[list[str]] = mapped_column(
+        JSON, default=lambda: ["whatsapp", "sms", "email"], nullable=False
+    )
+    channel_strategy: Mapped[str] = mapped_column(String(20), default="all")
     agency_name: Mapped[Optional[str]] = mapped_column(String(160))
     contact_email: Mapped[Optional[str]] = mapped_column(String(160))
     contact_phone: Mapped[Optional[str]] = mapped_column(String(30))
@@ -188,6 +202,15 @@ class MaintenanceRequest(Base):
     description: Mapped[str] = mapped_column(Text)
     photo_path: Mapped[Optional[str]] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(20), default="open", index=True)
+    source: Mapped[str] = mapped_column(String(30), default="manual", nullable=False)
+    ai_category: Mapped[Optional[str]] = mapped_column(String(30))
+    ai_urgency: Mapped[Optional[str]] = mapped_column(String(20))
+    ai_summary: Mapped[Optional[str]] = mapped_column(String(500))
+    ai_likely_cause: Mapped[Optional[str]] = mapped_column(String(500))
+    tried_self_help: Mapped[Optional[str]] = mapped_column(Text)
+    conversation_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("maintenance_conversations.id"), unique=True
+    )
     # ML fields: what the model suggested vs what the landlord confirmed.
     # Comparing the two columns over time measures real-world model accuracy.
     predicted_category: Mapped[Optional[str]] = mapped_column(String(20))
@@ -196,6 +219,50 @@ class MaintenanceRequest(Base):
     confirmed_urgency: Mapped[Optional[str]] = mapped_column(String(10))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+
+class MaintenanceConversation(Base):
+    """Private, agency-scoped tenant chat that can produce a maintenance request."""
+
+    __tablename__ = "maintenance_conversations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agency_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    lease_id: Mapped[int] = mapped_column(ForeignKey("leases.id"), index=True)
+    unit_id: Mapped[int] = mapped_column(ForeignKey("units.id"), index=True)
+    status: Mapped[str] = mapped_column(String(30), default="open", index=True)
+    photo_sharing_consent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    photo_sharing_consent_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    photo_sharing_notice_version: Mapped[Optional[str]] = mapped_column(String(40))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+
+class MaintenanceMessage(Base):
+    __tablename__ = "maintenance_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("maintenance_conversations.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(20))  # tenant, bot
+    text: Mapped[str] = mapped_column(Text)
+    flagged_emergency: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+class MaintenanceAttachment(Base):
+    __tablename__ = "maintenance_attachments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("maintenance_messages.id", ondelete="CASCADE"), index=True
+    )
+    storage_path: Mapped[str] = mapped_column(String(500))
+    content_type: Mapped[str] = mapped_column(String(100))
+    size: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class ReminderLog(Base):
@@ -229,7 +296,11 @@ class RentReminderLog(Base):
 
 
 class AgencyRentReminderLog(Base):
-    """Per-channel attempt log; uniqueness prevents cross-run duplicate delivery."""
+    """Per-channel attempt log; uniqueness prevents cross-run duplicate delivery.
+
+    ``period`` is the first day of the billing month (the existing representation
+    of YYYY-MM); ``window_days`` records the month-end reminder window.
+    """
 
     __tablename__ = "agency_rent_reminder_logs"
     __table_args__ = (UniqueConstraint(
@@ -244,10 +315,12 @@ class AgencyRentReminderLog(Base):
     period: Mapped[date] = mapped_column(Date, index=True)
     window_days: Mapped[int] = mapped_column(Integer)
     channel: Mapped[str] = mapped_column(String(20))
-    status: Mapped[str] = mapped_column(String(20))  # sent, failed, skipped
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending/sent/delivered/failed/skipped
+    skip_reason: Mapped[Optional[str]] = mapped_column(String(200))
     provider_message_id: Mapped[Optional[str]] = mapped_column(String(120))
     error: Mapped[Optional[str]] = mapped_column(Text)
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 

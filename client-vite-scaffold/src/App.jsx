@@ -9,6 +9,7 @@ import ApplicationDetail from './pages/tenant/ApplicationDetail'
 import MyLease from './pages/tenant/MyLease'
 import Report from './pages/tenant/Report'
 import LandlordApplications from './pages/landlord/LandlordApplications'
+import LandlordMaintenance from './pages/landlord/LandlordMaintenance'
 
 function Home() {
   const user = useSelector((s) => s.auth.user)
@@ -34,6 +35,7 @@ export default function App() {
 
           <Route element={<ProtectedRoute role="landlord" />}>
             <Route path="landlord/applications/:id?" element={<LandlordApplications />} />
+            <Route path="landlord/maintenance" element={<LandlordMaintenance />} />
           </Route>
         </Route>
       </Route>

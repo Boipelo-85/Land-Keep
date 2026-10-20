@@ -1,174 +1,124 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchMyLeases } from '../../store/leasesSlice'
-import { fetchMyMaintenance, reportMaintenance } from '../../store/maintenanceSlice'
-import { errorText } from '../../store/helpers'
+import { fetchMyMaintenance } from '../../store/maintenanceSlice'
 import { api } from '../../services/api'
-import { Empty, ErrorNote, Loading, SuccessNote } from '../../components/Feedback'
+import { Empty, ErrorNote, Loading } from '../../components/Feedback'
 import StatusBadge from '../../components/StatusBadge'
 import { fmtDateTime } from '../../utils/format'
-
-function RequestPhoto({ id }) {
-  const [src, setSrc] = useState('')
-
-  useEffect(() => {
-    let url = ''
-    let cancelled = false
-    api.maintenancePhotoUrl(id).then((u) => {
-      if (cancelled) {
-        URL.revokeObjectURL(u)
-        return
-      }
-      url = u
-      setSrc(u)
-    })
-    return () => {
-      cancelled = true
-      if (url) URL.revokeObjectURL(url)
-    }
-  }, [id])
-
-  if (!src) return null
-  return <img className="maint-photo" src={src} alt="Attached to this report" />
-}
 
 export default function Report() {
   const dispatch = useDispatch()
   const leases = useSelector((s) => s.leases)
-  const { items, status, error } = useSelector((s) => s.maintenance)
-
-  const [description, setDescription] = useState('')
-  const [photo, setPhoto] = useState(null)
-  const [preview, setPreview] = useState('')
+  const maintenance = useSelector((s) => s.maintenance)
+  const activeLease = leases.items.find((lease) => lease.status === 'active')
+  const [conversation, setConversation] = useState(null)
+  const [text, setText] = useState('')
+  const [photos, setPhotos] = useState([])
+  const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [formError, setFormError] = useState('')
-  const [notice, setNotice] = useState('')
+  const [error, setError] = useState('')
+  const fileRef = useRef(null)
 
-  const activeLease = leases.items.find((l) => l.status === 'active')
-  const leasesReady = leases.status === 'ready' || leases.status === 'failed'
+  useEffect(() => { dispatch(fetchMyLeases()); dispatch(fetchMyMaintenance()) }, [dispatch])
 
-  useEffect(() => {
-    dispatch(fetchMyLeases())
-    dispatch(fetchMyMaintenance())
-  }, [dispatch])
-
-  useEffect(() => {
-    if (!photo) {
-      setPreview('')
-      return
-    }
-    const url = URL.createObjectURL(photo)
-    setPreview(url)
-    return () => URL.revokeObjectURL(url)
-  }, [photo])
-
-  async function submit(e) {
-    e.preventDefault()
-    setFormError('')
-    setNotice('')
-    const text = description.trim()
-    if (text.length < 5) return setFormError('Describe the problem in at least 5 characters.')
-    if (text.length > 1000) return setFormError('Keep the description to 1000 characters or fewer.')
-
-    const formData = new FormData()
-    formData.append('description', text)
-    if (photo) formData.append('photo', photo)
-
-    setBusy(true)
-    try {
-      await dispatch(reportMaintenance(formData)).unwrap()
-      setDescription('')
-      setPhoto(null)
-      setNotice('Problem reported. An acknowledgement was sent by email and SMS.')
-    } catch (err) {
-      setFormError(errorText(err))
-    } finally {
-      setBusy(false)
-    }
+  async function start() {
+    setBusy(true); setError('')
+    try { setConversation(await api.startMaintenanceChat({ lease_id: activeLease.id, photo_sharing_consent: consent })) }
+    catch (err) { setError(err.message) }
+    finally { setBusy(false) }
   }
 
-  return (
-    <>
-      <header className="page-head">
-        <h1>Report a problem</h1>
-        <p>Tell us what is wrong in your unit. You can attach a photo if it helps.</p>
-      </header>
+  async function refresh() {
+    if (!conversation) return
+    setConversation(await api.maintenanceChat(conversation.id))
+  }
 
-      {!leasesReady && <Loading />}
-      {leasesReady && !activeLease && (
-        <Empty title="You need an active lease">
-          You can report a problem once you have an active lease. Check{' '}
-          <Link to="/lease">My lease</Link> if you are waiting to accept one.
-        </Empty>
-      )}
+  async function sendMessage(event) {
+    event.preventDefault()
+    if (!text.trim() && photos.length === 0) return
+    const data = new FormData()
+    data.append('text', text.trim())
+    photos.forEach((photo) => data.append('photos', photo))
+    setBusy(true); setError('')
+    try {
+      setConversation(await api.sendMaintenanceChat(conversation.id, data))
+      setText(''); setPhotos([]); if (fileRef.current) fileRef.current.value = ''
+    } catch (err) { setError(err.message) }
+    finally { setBusy(false) }
+  }
 
-      {activeLease && (
-        <form className="panel maint-form" onSubmit={submit}>
-          <h2>
-            {activeLease.property}, unit {activeLease.unit}
-          </h2>
-          <p className="muted small">Reports go against this active lease.</p>
+  async function resolve(solved) {
+    setBusy(true); setError('')
+    try { setConversation(await api.resolveMaintenanceChat(conversation.id, { solved, answer: solved ? 'Yes' : 'No or unsure' })) }
+    catch (err) { setError(err.message) }
+    finally { setBusy(false) }
+  }
 
-          <label className="field">
-            <span>What is the problem?</span>
-            <textarea
-              rows={4}
-              maxLength={1000}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
-              placeholder="For example: water dripping under the kitchen sink"
-            />
-            <small>{description.trim().length} / 1000</small>
-          </label>
+  async function escalate() {
+    setBusy(true); setError('')
+    try { setConversation(await api.escalateMaintenanceChat(conversation.id)) }
+    catch (err) { setError(err.message) }
+    finally { setBusy(false) }
+  }
 
-          <label className="field">
-            <span>Photo (optional)</span>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-              onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-            />
-            <small>Jpg, png, or webp. Maximum 5 MB.</small>
-          </label>
+  if (leases.status === 'loading' || leases.status === 'idle') return <Loading />
+  if (!activeLease) return <Empty title="You need an active lease">Check <Link to="/lease">My lease</Link> if you are waiting to accept one.</Empty>
 
-          {preview && <img className="maint-photo" src={preview} alt="Preview of the photo you chose" />}
-
-          <ErrorNote>{formError}</ErrorNote>
-          <SuccessNote>{notice}</SuccessNote>
-
-          <div className="actions actions-start">
-            <button type="submit" className="btn btn-primary" disabled={busy}>
-              {busy ? 'Sending' : 'Send report'}
-            </button>
-          </div>
+  return <>
+    <header className="page-head"><h1>Maintenance help</h1><p>Describe the problem and LandKeep will help you decide what to do next.</p></header>
+    {!conversation ? <section className="panel maint-form">
+      <h2>{activeLease.property}, unit {activeLease.unit}</h2>
+      <p className="muted">You can share photos so the AI helper and your landlord can assess the issue. Photos are stored privately.</p>
+      <label className="field"><span><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} /> I understand photos I upload will be shared with my landlord and Anthropic's AI service.</span></label>
+      <ErrorNote>{error}</ErrorNote>
+      <button className="btn btn-primary" disabled={busy} onClick={start}>{busy ? 'Starting…' : 'Start chat'}</button>
+    </section> : <section className="panel maintenance-chat">
+      <header className="lease-head"><div><h2>{activeLease.property}, unit {activeLease.unit}</h2><p className="muted small">Chat status: {conversation.status.replaceAll('_', ' ')}</p></div>
+        <button className="btn btn-secondary" onClick={escalate} disabled={busy || conversation.request_id}>Report to landlord</button></header>
+      <div className="chat-messages" aria-live="polite">
+        {conversation.messages.map((message) => <article key={message.id} className={`chat-bubble ${message.role === 'tenant' ? 'chat-mine' : 'chat-bot'}`}>
+          <p>{message.text}</p>
+          {message.attachments?.map((attachment) => <ChatPhoto key={attachment.id} attachment={attachment} />)}
+        </article>)}
+        {busy && <p className="muted">LandKeep is checking this…</p>}
+      </div>
+      <ErrorNote>{error}</ErrorNote>
+      {conversation.status === 'open' && <>
+        <form className="chat-compose" onSubmit={sendMessage}>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} rows={3} placeholder="Tell us what happened…" aria-label="Your message" />
+          <input ref={fileRef} type="file" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" capture="environment" onChange={(e) => setPhotos(Array.from(e.target.files || []))} />
+          <small>Up to 5 JPG, PNG or WEBP photos, 5 MB each.</small>
+          {photos.length > 0 && <small>{photos.length} photo(s) selected</small>}
+          <button className="btn btn-primary" disabled={busy || (!text.trim() && photos.length === 0)}>{busy ? 'Sending…' : 'Send'}</button>
         </form>
-      )}
+        {conversation.messages.some((message) => message.role === 'bot' && message.text.includes('Did that solve it?')) && <div className="actions">
+          <button className="btn btn-secondary" disabled={busy} onClick={() => resolve(true)}>Yes, it is solved</button>
+          <button className="btn btn-primary" disabled={busy} onClick={() => resolve(false)}>No / not sure</button>
+        </div>}
+      </>}
+      {conversation.request_id && <p className="success-note">Your landlord has the report. Reference MR-{String(conversation.request_id).padStart(6, '0')}.</p>}
+      {conversation.status === 'resolved_self_help' && <p className="success-note">Marked as resolved by self-help.</p>}
+    </section>}
 
-      <header className="page-head">
-        <h2>My reports</h2>
-      </header>
-      {status === 'loading' && items.length === 0 && <Loading />}
-      <ErrorNote>{status === 'failed' ? error : ''}</ErrorNote>
-      {status === 'ready' && items.length === 0 && (
-        <Empty title="No reports yet">When you send a report, it appears here.</Empty>
-      )}
-      {items.map((req) => (
-        <article key={req.id} className="panel maint-item">
-          <header className="lease-head">
-            <div>
-              <h2>
-                {req.property}, unit {req.unit_number}
-              </h2>
-              <p className="muted small">Sent {fmtDateTime(req.created_at)}</p>
-            </div>
-            <StatusBadge status={req.status} />
-          </header>
-          <p>{req.description}</p>
-          {req.has_photo && <RequestPhoto id={req.id} />}
-        </article>
-      ))}
-    </>
-  )
+    <header className="page-head"><h2>My reports</h2></header>
+    {maintenance.status === 'loading' && <Loading />}
+    {maintenance.status === 'ready' && maintenance.items.length === 0 && <Empty title="No reports yet">When you send a report to your landlord, it appears here.</Empty>}
+    {maintenance.items.map((req) => <article key={req.id} className="panel maint-item"><header className="lease-head"><div><h2>{req.property}, unit {req.unit_number}</h2><p className="muted small">Sent {fmtDateTime(req.created_at)}</p></div><StatusBadge status={req.status} /></header><p>{req.description}</p></article>)}
+  </>
+}
+
+function ChatPhoto({ attachment }) {
+  const [src, setSrc] = useState('')
+  useEffect(() => {
+    let objectUrl
+    let cancelled = false
+    api.maintenanceAttachmentUrl(attachment.id).then((url) => {
+      if (cancelled) { URL.revokeObjectURL(url); return }
+      objectUrl = url; setSrc(url)
+    }).catch(() => {})
+    return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl) }
+  }, [attachment.id])
+  return src ? <img className="maint-photo" src={src} alt="Photo attached to maintenance chat" /> : null
 }

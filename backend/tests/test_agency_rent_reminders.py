@@ -25,7 +25,8 @@ def test_month_end_calculation_including_february_leap_year_and_month_lengths():
 
 def _lease(db, unit, tenant, start=date(2024, 1, 1), end=date(2024, 12, 31), status="active"):
     lease = m.Lease(unit_id=unit.id, tenant_id=tenant.id, start_date=start, end_date=end,
-                    monthly_rent=7000, deposit=7000, due_day=5, status=status)
+                    monthly_rent=unit.monthly_rent, deposit=unit.monthly_rent, due_day=5,
+                    status=status)
     db.add(lease)
     db.flush()
     return lease
@@ -206,6 +207,78 @@ def test_no_contact_is_skipped_and_recorded(client):
         assert result["reminders"][0]["channels"][0]["status"] == "skipped"
 
 
+def test_catch_up_sends_missed_window_once_and_never_for_past_month(client):
+    calls = []
+
+    class SmsSender:
+        def send(self, recipient, subject, message, *, template_variables=None):
+            calls.append((recipient, message))
+            return DeliveryResult("catchup-id")
+
+    with SessionLocal() as db:
+        agency = db.scalar(select(m.User).where(m.User.email == "landlord@test.com"))
+        unit = db.scalar(select(m.Unit).where(m.Unit.unit_number == "A01"))
+        tenant = _tenant(db, "catchup@test.com")
+        lease = _lease(db, unit, tenant)
+        tenant.sms_opt_in = True
+        db.add(m.AgencyReminderSettings(agency_id=agency.id, reminder_days_before_month_end=3,
+                                        reminder_windows=[3], channel_order=["sms"],
+                                        enabled_channels=["sms"]))
+        db.commit()
+
+        # In leap-year February, a 3-day window is due Feb 26 (29th minus 3).
+        # Running on Feb 28 catches up because this month's end has not passed.
+        first = run_reminders(db, agency_id=agency.id, day=date(2024, 2, 28),
+                              sender_factory=lambda _channel: SmsSender())
+        second = run_reminders(db, agency_id=agency.id, day=date(2024, 2, 28),
+                               sender_factory=lambda _channel: SmsSender())
+        past_month = run_reminders(db, agency_id=agency.id, day=date(2024, 3, 1),
+                                   sender_factory=lambda _channel: SmsSender())
+
+        assert len(calls) == 1
+        assert first["summary"]["sent"] == 1
+        assert second["reminders"] == []
+        assert past_month["reminders"] == []
+        row = db.scalar(select(m.AgencyRentReminderLog).where(
+            m.AgencyRentReminderLog.lease_id == lease.id
+        ))
+        assert row.period == date(2024, 2, 1)
+        assert row.window_days == 3
+
+
+def test_multiple_leases_are_combined_into_one_channel_message(client):
+    sent = []
+
+    class SmsSender:
+        def send(self, recipient, subject, message, *, template_variables=None):
+            sent.append(message)
+            return DeliveryResult("combined-id")
+
+    with SessionLocal() as db:
+        agency = db.scalar(select(m.User).where(m.User.email == "landlord@test.com"))
+        units = db.scalars(select(m.Unit).where(m.Unit.unit_number.in_(["A01", "A02"]))).all()
+        tenant = _tenant(db, "multiple-leases@test.com")
+        leases = [_lease(db, unit, tenant) for unit in units]
+        tenant.sms_opt_in = True
+        db.add(m.AgencyReminderSettings(agency_id=agency.id, reminder_days_before_month_end=7,
+                                        reminder_windows=[7], channel_order=["sms"],
+                                        enabled_channels=["sms"]))
+        db.commit()
+
+        result = run_reminders(db, agency_id=agency.id, day=date(2024, 2, 22),
+                               sender_factory=lambda _channel: SmsSender())
+        rerun = run_reminders(db, agency_id=agency.id, day=date(2024, 2, 22),
+                              sender_factory=lambda _channel: SmsSender())
+
+        assert len(result["reminders"]) == 1
+        assert len(sent) == 1
+        assert set(result["reminders"][0]["lease_ids"]) == {lease.id for lease in leases}
+        assert "A01" in sent[0] and "A02" in sent[0]
+        assert "R 7,000.00" in sent[0] and "R 5,000.00" in sent[0]
+        assert result["reminders"][0]["amount_outstanding"] == 12000
+        assert rerun["reminders"] == []
+
+
 def test_provider_retries_rate_limit_with_mocked_sender(monkeypatch):
     monkeypatch.setenv("LANDKEEP_PROVIDER_MAX_ATTEMPTS", "3")
     monkeypatch.setenv("LANDKEEP_PROVIDER_RETRY_BASE_SECONDS", "0")
@@ -230,6 +303,42 @@ def test_provider_retries_rate_limit_with_mocked_sender(monkeypatch):
     result = reminder_senders.send_with_retries(sender, "+27825550123", "subject", "message")
     assert sender.calls == 2
     assert result.provider_message_id == "retried-message"
+
+
+def test_provider_retries_transient_server_errors_but_not_permanent_errors(monkeypatch):
+    monkeypatch.setenv("LANDKEEP_PROVIDER_MAX_ATTEMPTS", "3")
+    monkeypatch.setenv("LANDKEEP_PROVIDER_RETRY_BASE_SECONDS", "0")
+    monkeypatch.setattr(reminder_senders, "_rate_limit", lambda: None)
+
+    class ProviderError(Exception):
+        def __init__(self, status):
+            self.status = status
+
+    class MockSender:
+        channel = "sms"
+
+        def __init__(self, status):
+            self.status = status
+            self.calls = 0
+
+        def send(self, *args, **kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                raise ProviderError(self.status)
+            return DeliveryResult("retried")
+
+    transient = MockSender(503)
+    assert reminder_senders.send_with_retries(transient, "+27825550123", "s", "m").provider_message_id == "retried"
+    assert transient.calls == 2
+
+    permanent = MockSender(400)
+    try:
+        reminder_senders.send_with_retries(permanent, "+27825550123", "s", "m")
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("a permanent provider error must be raised")
+    assert permanent.calls == 1
 
 
 def test_manual_dry_run_is_landlord_only_and_uses_only_that_agency(client):

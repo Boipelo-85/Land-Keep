@@ -75,13 +75,15 @@ def _settings_out(agency: m.User, row: m.AgencyReminderSettings | None) -> dict:
     ]
     return {
         "agency_id": agency.id,
+        "reminders_enabled": row.reminders_enabled if row else True,
         "agency_name": row.agency_name if row and row.agency_name else agency.full_name,
         "contact_email": row.contact_email if row and row.contact_email is not None else agency.email,
         "contact_phone": row.contact_phone if row and row.contact_phone is not None else agency.phone,
         "reminder_days_before_month_end": row.reminder_days_before_month_end if row else 3,
         "reminder_windows": windows,
         "channel_order": row.channel_order if row and row.channel_order else ["whatsapp", "sms", "email"],
-        "channel_strategy": row.channel_strategy if row else "fallback",
+        "enabled_channels": row.enabled_channels if row and row.enabled_channels else ["whatsapp", "sms", "email"],
+        "channel_strategy": row.channel_strategy if row else "all",
     }
 
 
@@ -121,13 +123,10 @@ def update_settings(
 
 @router.get("/preferences")
 def get_preferences(tenant: m.User = Depends(require_tenant), db: Session = Depends(get_db)):
-    row = db.scalar(select(m.TenantChannelPreference).where(
-        m.TenantChannelPreference.tenant_id == tenant.id
-    ))
     return {
-        "whatsapp_opt_in": bool(row and row.whatsapp_opt_in),
-        "sms_opt_in": bool(row and row.sms_opt_in),
-        "email_opt_in": bool(row and row.email_opt_in),
+        "whatsapp_opt_in": tenant.whatsapp_opt_in,
+        "sms_opt_in": tenant.sms_opt_in,
+        "email_opt_in": tenant.email_opt_in,
     }
 
 
@@ -145,7 +144,10 @@ def update_preferences(
         db.add(row)
     for key, value in body.model_dump(exclude_unset=True).items():
         setattr(row, key, value)
+        setattr(tenant, key, value)
     row.updated_at = m.utcnow()
+    tenant.consent_recorded_at = m.utcnow()
+    tenant.consent_recorded_by = tenant.id
     db.commit()
     return get_preferences(tenant, db)
 
@@ -188,9 +190,13 @@ async def twilio_inbound(request: Request, db: Session = Depends(get_db)):
                     db.add(pref)
                 if str(form.get("To", "")).startswith("whatsapp:"):
                     pref.whatsapp_opt_in = False
+                    tenant.whatsapp_opt_in = False
                 else:
                     pref.sms_opt_in = False
+                    tenant.sms_opt_in = False
                 pref.updated_at = m.utcnow()
+                tenant.consent_recorded_at = m.utcnow()
+                tenant.consent_recorded_by = tenant.id
                 db.commit()
     return Response(content="<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response/>",
                     media_type="application/xml")

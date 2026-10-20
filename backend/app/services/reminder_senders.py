@@ -114,7 +114,13 @@ def send_with_retries(sender: Sender, recipient: str, subject: str, message: str
             last_error = exc
             status = getattr(exc, "status", None)
             smtp_code = getattr(exc, "smtp_code", None)
-            retryable = status == 429 or (smtp_code is not None and 400 <= smtp_code < 500)
+            retryable = (
+                status == 429
+                or (status is not None and 500 <= status < 600)
+                or (smtp_code is not None and 400 <= smtp_code < 500)
+                or isinstance(exc, (TimeoutError, ConnectionError, OSError,
+                                    smtplib.SMTPServerDisconnected))
+            )
             if retryable and attempt + 1 < attempts:
                 time.sleep(base_delay * (2 ** attempt))
                 continue
