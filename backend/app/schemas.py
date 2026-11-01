@@ -1,0 +1,101 @@
+"""Request bodies. Validation lives here so the routes stay short."""
+from datetime import date, datetime
+from typing import Annotated, Literal, Optional
+
+from pydantic import BaseModel, Field, field_validator
+
+from .phone_numbers import normalize_sa_phone
+
+EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+
+
+class RegisterIn(BaseModel):
+    full_name: str = Field(min_length=2, max_length=120)
+    email: str = Field(pattern=EMAIL_PATTERN)
+    phone: Optional[str] = Field(default=None, max_length=30)
+    password: str = Field(min_length=8, max_length=100)
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or not value.strip():
+            return None
+        try:
+            return normalize_sa_phone(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+class ApplicationIn(BaseModel):
+    unit_id: int
+    monthly_income: float = Field(gt=0)
+    employer: Optional[str] = Field(default=None, max_length=120)
+    id_number: str = Field(pattern=r"^\d{13}$", description="13-digit South African ID number")
+    consent_given: bool
+
+
+class DecisionIn(BaseModel):
+    decision: Literal["approved", "rejected"]
+    note: Optional[str] = Field(default=None, max_length=300)
+
+
+class ConvertIn(BaseModel):
+    start_date: date
+    term_months: int = Field(default=12, ge=1, le=36)
+    deposit: Optional[float] = Field(default=None, ge=0)  # defaults to one month's rent
+    due_day: int = Field(default=1, ge=1, le=28)
+
+
+class MaintenanceOut(BaseModel):
+    classification: Optional[dict] = None
+    id: int
+    description: str
+    status: str
+    created_at: datetime
+    has_photo: bool
+    unit_number: str
+    property: str
+
+
+class AgencyReminderSettingsIn(BaseModel):
+    reminders_enabled: Optional[bool] = None
+    reminder_days_before_month_end: Optional[int] = Field(default=None, ge=0, le=31)
+    reminder_windows: Optional[list[Annotated[int, Field(ge=0, le=31)]]] = Field(
+        default=None, min_length=1, max_length=8
+    )
+    channel_order: Optional[list[Literal["whatsapp", "sms", "email"]]] = Field(
+        default=None, min_length=1, max_length=3
+    )
+    enabled_channels: Optional[list[Literal["whatsapp", "sms", "email"]]] = Field(
+        default=None, min_length=1, max_length=3
+    )
+    channel_strategy: Optional[Literal["fallback", "all"]] = None
+    agency_name: Optional[str] = Field(default=None, max_length=160)
+    contact_email: Optional[str] = Field(default=None, max_length=160)
+    contact_phone: Optional[str] = Field(default=None, max_length=30)
+
+
+class TenantReminderPreferencesIn(BaseModel):
+    whatsapp_opt_in: Optional[bool] = None
+    sms_opt_in: Optional[bool] = None
+    email_opt_in: Optional[bool] = None
+
+
+class PropertyCreateIn(BaseModel):
+    model_config = {'str_strip_whitespace': True}
+    name: str = Field(min_length=2, max_length=120)
+    address: str = Field(min_length=3, max_length=200)
+    city: str = Field(min_length=2, max_length=80)
+
+
+class UnitCreateIn(BaseModel):
+    model_config = {'str_strip_whitespace': True}
+    property_id: int = Field(gt=0)
+    unit_number: str = Field(min_length=1, max_length=20)
+    bedrooms: int = Field(ge=0, le=20)
+    monthly_rent: float = Field(gt=0, le=100000000, allow_inf_nan=False)

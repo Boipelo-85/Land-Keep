@@ -1,0 +1,70 @@
+INFO:     Started server process [65264]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:51984 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53885 - "GET /units/vacant HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53886 - "GET /units/vacant HTTP/1.1" 200 OK
+[EMAIL -> applicant@landkeep.test] We received your application: Hi Naledi, we received your application LK-2026-00013 for unit C04. You can track it in LandKeep with this reference number.
+[SMS -> +27825550123] We received your application: Hi Naledi, we received your application LK-2026-00013 for unit C04. You can track it in LandKeep with this reference number.
+[EMAIL -> landlord@landkeep.test] New tenant application: Hi Thabo, Naledi Khumalo applied for unit C04 (reference LK-2026-00013). Review it in LandKeep.
+INFO:     127.0.0.1:58598 - "POST /applications HTTP/1.1" 201 Created
+INFO:     127.0.0.1:52084 - "GET /applications/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64608 - "GET /applications/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61750 - "GET /applications/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61751 - "GET /applications/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63332 - "GET /payments/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63333 - "GET /payments/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63335 - "GET /units/vacant HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63336 - "GET /units/vacant HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50716 - "GET /applications/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55495 - "GET /applications/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52514 - "GET /maintenance/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54066 - "GET /maintenance/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52515 - "GET /leases/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61010 - "GET /leases/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53280 - "GET /leases/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65412 - "GET /leases/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55330 - "GET /units/vacant HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57345 - "GET /units/vacant HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50158 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49910 - "GET /applications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53020 - "GET /applications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51656 - "GET /applications/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56343 - "GET /applications/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56488 - "POST /applications/13/credit-check HTTP/1.1" 200 OK
+[EMAIL -> applicant@landkeep.test] Your application was approved: Good news Naledi! Your application LK-2026-00013 for unit C04 was approved. Your lease agreement will follow shortly.
+[SMS -> +27825550123] Your application was approved: Good news Naledi! Your application LK-2026-00013 for unit C04 was approved. Your lease agreement will follow shortly.
+INFO:     127.0.0.1:59645 - "POST /applications/13/decision HTTP/1.1" 200 OK
+[EMAIL -> applicant@landkeep.test] Your lease agreement is ready: Hi Naledi, your lease for unit C04 is ready. Log in to LandKeep to read it and accept.
+[SMS -> +27825550123] Your lease agreement is ready: Hi Naledi, your lease for unit C04 is ready. Log in to LandKeep to read it and accept.
+INFO:     127.0.0.1:52490 - "POST /applications/13/convert HTTP/1.1" 201 Created
+INFO:     127.0.0.1:51921 - "GET /applications/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55640 - "GET /maintenance/requests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56639 - "GET /maintenance/requests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61792 - "GET /units/properties HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61793 - "GET /units/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62541 - "GET /units/properties HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64222 - "GET /units/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50835 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50240 - "GET /units/vacant HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56681 - "GET /units/vacant HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /applications/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55362 - "GET /applications/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64063 - "GET /applications/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57622 - "GET /applications/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59599 - "GET /leases/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54441 - "GET /leases/mine HTTP/1.1" 200 OK
+[EMAIL -> landlord@landkeep.test] Lease accepted: Hi Thabo, Naledi Khumalo accepted the lease for unit C04. They are now an active tenant.
+INFO:     127.0.0.1:56993 - "POST /leases/43/accept HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53166 - "GET /leases/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58934 - "GET /leases/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53084 - "GET /maintenance/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52885 - "GET /maintenance/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53916 - "GET /maintenance/conversations/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59481 - "GET /payments/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54686 - "GET /payments/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62598 - "GET /units/vacant HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49817 - "GET /units/vacant HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62661 - "GET /units/vacant HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62662 - "GET /units/vacant HTTP/1.1" 200 OK

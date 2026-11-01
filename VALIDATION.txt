@@ -1,0 +1,54 @@
+Validation of this package
+
+79 backend tests passed in a newly installed Python environment.
+Frontend production build passed.
+The new launcher created its environment, installed dependencies, applied
+migrations, generated synthetic data, and started FastAPI and Vite together.
+Real HTTP checks through Vite passed for health, landlord/tenant logins,
+applications, tenant lease, chat reply, escalation, landlord report visibility,
+and unresolved follow-up. Repeated initialization preserved existing users.
+
+Tests ran on Linux. Windows CMD execution was not tested here.
+Live Claude replies and external provider delivery require your own credentials
+and were not verified. Local fallback chat was tested. This is a locally runnable
+project, not a hosted website. Installation requires Python and Node.js plus
+internet on first run. Your old .venv, database, and credentials are not bundled.
+
+Additional verification for Apply and maintenance guidance:
+React DOM interaction checks passed for Apply opening, Escape dismissal,
+reopening, Cancel, consent gating, submission payload, and navigation. These
+used a simulated DOM, dialog methods, and API responses, not a real browser.
+The existing backend application tests verify server-side submissions.
+Live proxy checks also asserted relevant guidance immediately after escalation.
+Regression tests cover manual Report, No/not-solved escalation, and interim
+plumbing/electrical/security/general/emergency guidance.
+
+Trained model update:
+Actual fitted TF-IDF/logistic regression artifact bundled, trained on 400 labelled
+synthetic examples in four categories. Group-held-out and separate synthetic
+QA evaluations are recorded in TRAINED-MODEL.md and classifier JSON metadata.
+Six new backend tests verify the fitted artifact, predictions, stored provenance,
+landlord correction permissions, missing-model fallback, and emergency priority.
+The app does not claim these scores establish production accuracy.
+
+Unit-management update:
+New landlord property/unit creation endpoints and My units screen. Tenant Find
+a unit navigation remains visible with active leases. Backend validation,
+landlord ownership, tenant denial, case-insensitive duplicate detection, and
+reserved-unit exclusion tested. Functional index migration preserves records.
+Simulated DOM tests passed for creating property, publishing unit and navigation.
+Live HTTP through Vite passed for property creation, unit publishing, vacant-unit
+visibility and a real tenant application, plus classifier/chat regression checks.
+
+Payment/chat/contractor update:
+Exact missing-key screenshot phrases and negative plumbing follow-ups tested.
+A fitted low/high priority classifier now accompanies category classification;
+unknown local chat phrases can use the trained category to choose a safe question.
+Payment review UI and external PayFast form POST checked in a simulated DOM.
+Backend tests verify configuration readiness, hosted sandbox destination/signature,
+unchanged rent balances before verified provider notification, contractor ownership,
+assignment visibility in tenant chat, and completion updating report status.
+Live local HTTP checks passed for contractor assignment, trained priority output,
+missing-key replies, plus the previous complete publish/apply/report workflow.
+External provider transactions and live Claude responses remain unverified without
+credentials. Contractor login accounts and late-rent forecasting are not included.

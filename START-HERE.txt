@@ -1,0 +1,69 @@
+LANDKEEP - WINDOWS STARTUP
+
+1. Extract the ZIP completely. Open the Land-Keep folder inside it.
+2. Have Python 3.12 and Node.js 24 LTS installed.
+3. Double-click START-LANDKEEP.cmd.
+4. Let installation finish. Do not press Ctrl+C while installing.
+5. Your browser opens when both servers pass their connection check.
+6. Keep the launcher window open. Ctrl+C stops both servers.
+
+First startup needs internet to download dependencies.
+This uses a new .landkeep-runtime environment so a damaged old .venv is not reused.
+If startup fails, the window stays open with the error. Server logs are in logs/.
+Close old frontend/backend terminals before starting this launcher.
+
+DEMO ACCOUNTS (created only if the database has no users)
+Landlord: landlord@landkeep.test
+Tenant: tenant@landkeep.test
+Applicant: applicant@landkeep.test
+Password: password123
+
+The existing application has landlord and tenant roles. There is no built-in
+admin@grandrest.com account. Use the landlord demo for management features.
+
+CHATBOT
+Open maintenance help as the demo tenant with an active lease.
+Local guidance works without an AI key. For live Claude conversation, create
+backend/.env from backend/.env.example and enter your own ANTHROPIC_API_KEY.
+Set MAINTENANCE_AI_MODEL to a model available to your account, then restart.
+Never put API keys in frontend files.
+
+EXISTING DATA
+To retain your current data when moving to this extracted copy, stop old servers,
+back up and copy backend/landkeep.db, backend/.env, and backend/storage into this
+copy's backend folder. If using an external database, keep its configuration.
+The launcher applies migrations and skips demo seeding when users already exist.
+Do not run seed.py yourself against data you want to retain; it resets demo data.
+
+AFTER REPORTING
+The chatbot immediately adds problem-specific "While you wait" guidance to the
+report confirmation. It covers plumbing, electrical, locks/security, damp and
+general issues. Emergency guidance takes priority. You can continue chatting.
+Advice is interim guidance, not a diagnosis or a promise of a repair.
+
+TRAINED MODEL
+An actual fitted local maintenance classifier is bundled. It labels NEW reports
+as plumbing, electrical, security, or general repairs. The landlord sees its
+suggestion and can confirm/correct it. This classification does not require an
+Anthropic key. It is trained on 400 synthetic demo examples; see TRAINED-MODEL.md
+for evaluation, limitations, retraining and file locations.
+
+This text classifier does not generate chatbot replies. Existing local guidance
+and optional Claude chat remain available, including advice after reporting.
+Late-payment prediction and recurring-issue detection are not implemented.
+
+FIND / ADD UNITS
+Tenant/applicant: sign in, then choose Find a unit in the sidebar. This remains
+visible with an active lease. Click Refresh listings to see newly published units,
+then Apply and complete the form with credit-check consent.
+
+Landlord: sign in, then choose My units. Add the property's name, address and city.
+Select that property, enter unit number, bedrooms and rent, then Publish unit.
+New units appear in tenant listings immediately. Units with pending/active leases
+are excluded from vacancies. Each landlord can list units only in their properties.
+
+LATEST UPDATE
+Read PAYMENTS-AND-MAINTENANCE.md for payment configuration, the new checkout
+review screen, contractor work orders, chat wording fixes and trained priority.
+Payment details are entered on PayFast's hosted screen after merchant setup.
+A local card form cannot enable an unconfigured gateway.
