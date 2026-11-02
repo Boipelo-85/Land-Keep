@@ -1,0 +1,722 @@
+[
+  {
+    "text": "The tap is dripping all night",
+    "intent": "leak"
+  },
+  {
+    "text": "Water leaks underneath my sink",
+    "intent": "leak"
+  },
+  {
+    "text": "There is a puddle below the basin",
+    "intent": "leak"
+  },
+  {
+    "text": "My bathroom pipe has a slow leak",
+    "intent": "leak"
+  },
+  {
+    "text": "The toilet cistern keeps leaking",
+    "intent": "leak"
+  },
+  {
+    "text": "A kitchen fitting drips whenever I wash",
+    "intent": "leak"
+  },
+  {
+    "text": "Water is seeping from the shower hose",
+    "intent": "leak"
+  },
+  {
+    "text": "My mixer tap will not stop dripping",
+    "intent": "leak"
+  },
+  {
+    "text": "There is a small leak behind the toilet",
+    "intent": "leak"
+  },
+  {
+    "text": "The pipe joint is wet and dripping",
+    "intent": "leak"
+  },
+  {
+    "text": "The sink cupboard is getting wet",
+    "intent": "leak"
+  },
+  {
+    "text": "My bathroom faucet leaks when closed",
+    "intent": "leak"
+  },
+  {
+    "text": "Drops keep falling from the kitchen tap",
+    "intent": "leak"
+  },
+  {
+    "text": "The bath waste pipe drips onto the floor",
+    "intent": "leak"
+  },
+  {
+    "text": "Please help with a leaking water pipe",
+    "intent": "leak"
+  },
+  {
+    "text": "None of my taps have water",
+    "intent": "no_water"
+  },
+  {
+    "text": "The water supply has stopped",
+    "intent": "no_water"
+  },
+  {
+    "text": "There is no water in my unit",
+    "intent": "no_water"
+  },
+  {
+    "text": "My taps are completely dry",
+    "intent": "no_water"
+  },
+  {
+    "text": "Water is not coming out of the tap",
+    "intent": "no_water"
+  },
+  {
+    "text": "The whole flat has lost water",
+    "intent": "no_water"
+  },
+  {
+    "text": "Both hot and cold taps stopped working",
+    "intent": "no_water"
+  },
+  {
+    "text": "We have had no running water since morning",
+    "intent": "no_water"
+  },
+  {
+    "text": "My kitchen tap has no flow",
+    "intent": "no_water"
+  },
+  {
+    "text": "The bathroom has no water pressure",
+    "intent": "no_water"
+  },
+  {
+    "text": "I cannot get any water from the sink",
+    "intent": "no_water"
+  },
+  {
+    "text": "The shower water has stopped running",
+    "intent": "no_water"
+  },
+  {
+    "text": "All the taps stopped at the same time",
+    "intent": "no_water"
+  },
+  {
+    "text": "Is there a water outage in the building",
+    "intent": "no_water"
+  },
+  {
+    "text": "My apartment has no running water today",
+    "intent": "no_water"
+  },
+  {
+    "text": "The kitchen sink will not drain",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "My toilet is blocked",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "Water stays in the shower tray",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "The basin empties very slowly",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "The bath drain is clogged",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "My sink fills up when I wash dishes",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "There is a blockage in the bathroom drain",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "The shower outlet is not draining",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "Water is backing up into the basin",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "My toilet bowl does not empty",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "The kitchen drain smells and drains slowly",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "The bathroom sink is plugged up",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "Dirty water comes back through the drain",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "I have a clogged toilet please assist",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "Standing water will not go down the plughole",
+    "intent": "blocked_drain"
+  },
+  {
+    "text": "My flat has no electricity",
+    "intent": "power"
+  },
+  {
+    "text": "All the power went off",
+    "intent": "power"
+  },
+  {
+    "text": "The whole unit has lost power",
+    "intent": "power"
+  },
+  {
+    "text": "There is no electricity in the apartment",
+    "intent": "power"
+  },
+  {
+    "text": "Every socket stopped working",
+    "intent": "power"
+  },
+  {
+    "text": "The power keeps cutting out",
+    "intent": "power"
+  },
+  {
+    "text": "My electricity is off but neighbours have power",
+    "intent": "power"
+  },
+  {
+    "text": "All appliances stopped at the same time",
+    "intent": "power"
+  },
+  {
+    "text": "The prepaid electricity meter shows no power",
+    "intent": "power"
+  },
+  {
+    "text": "There is a blackout in my unit",
+    "intent": "power"
+  },
+  {
+    "text": "The breaker keeps tripping",
+    "intent": "power"
+  },
+  {
+    "text": "Our flat has no electrical supply",
+    "intent": "power"
+  },
+  {
+    "text": "The plugs throughout the flat have stopped",
+    "intent": "power"
+  },
+  {
+    "text": "I cannot get power anywhere in the house",
+    "intent": "power"
+  },
+  {
+    "text": "The electricity switches off repeatedly",
+    "intent": "power"
+  },
+  {
+    "text": "The bedroom light does not turn on",
+    "intent": "lighting"
+  },
+  {
+    "text": "My kitchen bulb has stopped working",
+    "intent": "lighting"
+  },
+  {
+    "text": "The bathroom light flickers",
+    "intent": "lighting"
+  },
+  {
+    "text": "One ceiling lamp will not switch on",
+    "intent": "lighting"
+  },
+  {
+    "text": "The hallway light is broken",
+    "intent": "lighting"
+  },
+  {
+    "text": "Only one room has no light",
+    "intent": "lighting"
+  },
+  {
+    "text": "The light fitting is loose",
+    "intent": "lighting"
+  },
+  {
+    "text": "My bedside wall light is faulty",
+    "intent": "lighting"
+  },
+  {
+    "text": "The lounge lights flicker every evening",
+    "intent": "lighting"
+  },
+  {
+    "text": "The porch lamp is not working",
+    "intent": "lighting"
+  },
+  {
+    "text": "The light switch does nothing",
+    "intent": "lighting"
+  },
+  {
+    "text": "My ceiling light stopped yesterday",
+    "intent": "lighting"
+  },
+  {
+    "text": "One bulb keeps going out",
+    "intent": "lighting"
+  },
+  {
+    "text": "The passage is dark because the lamp failed",
+    "intent": "lighting"
+  },
+  {
+    "text": "Please check the faulty bathroom lighting",
+    "intent": "lighting"
+  },
+  {
+    "text": "There is no hot water from the geyser",
+    "intent": "hot_water"
+  },
+  {
+    "text": "The shower only gives cold water",
+    "intent": "hot_water"
+  },
+  {
+    "text": "My geyser is not heating",
+    "intent": "hot_water"
+  },
+  {
+    "text": "We have cold water but no hot water",
+    "intent": "hot_water"
+  },
+  {
+    "text": "The hot tap runs cold",
+    "intent": "hot_water"
+  },
+  {
+    "text": "The water heater stopped working",
+    "intent": "hot_water"
+  },
+  {
+    "text": "I cannot get a warm shower",
+    "intent": "hot_water"
+  },
+  {
+    "text": "Our geyser water never gets warm",
+    "intent": "hot_water"
+  },
+  {
+    "text": "There has been no hot water since yesterday",
+    "intent": "hot_water"
+  },
+  {
+    "text": "Cold water works but the hot supply is cold",
+    "intent": "hot_water"
+  },
+  {
+    "text": "The geyser seems faulty",
+    "intent": "hot_water"
+  },
+  {
+    "text": "The bathroom hot water is not heating",
+    "intent": "hot_water"
+  },
+  {
+    "text": "The hot water runs out almost immediately",
+    "intent": "hot_water"
+  },
+  {
+    "text": "My shower is freezing even on hot",
+    "intent": "hot_water"
+  },
+  {
+    "text": "Please arrange help for the cold geyser",
+    "intent": "hot_water"
+  },
+  {
+    "text": "I lost my apartment keys",
+    "intent": "keys"
+  },
+  {
+    "text": "I cannot find my room key",
+    "intent": "keys"
+  },
+  {
+    "text": "My access card is missing",
+    "intent": "keys"
+  },
+  {
+    "text": "I am locked out of my unit",
+    "intent": "keys"
+  },
+  {
+    "text": "The key snapped in my door",
+    "intent": "keys"
+  },
+  {
+    "text": "I misplaced the flat keys",
+    "intent": "keys"
+  },
+  {
+    "text": "I need a replacement access card",
+    "intent": "keys"
+  },
+  {
+    "text": "I left my keys inside the locked room",
+    "intent": "keys"
+  },
+  {
+    "text": "My door key no longer fits",
+    "intent": "keys"
+  },
+  {
+    "text": "The entrance lock is jammed",
+    "intent": "keys"
+  },
+  {
+    "text": "Someone stole my room keys",
+    "intent": "keys"
+  },
+  {
+    "text": "I need an authorised spare key",
+    "intent": "keys"
+  },
+  {
+    "text": "I cannot unlock the front door",
+    "intent": "keys"
+  },
+  {
+    "text": "My keys are missing please help",
+    "intent": "keys"
+  },
+  {
+    "text": "The access tag will not open the gate",
+    "intent": "keys"
+  },
+  {
+    "text": "There is mould on my bedroom wall",
+    "intent": "damp"
+  },
+  {
+    "text": "The ceiling has a damp patch",
+    "intent": "damp"
+  },
+  {
+    "text": "My walls are wet after rain",
+    "intent": "damp"
+  },
+  {
+    "text": "Black mould is growing near the window",
+    "intent": "damp"
+  },
+  {
+    "text": "The bedroom smells damp",
+    "intent": "damp"
+  },
+  {
+    "text": "Paint is peeling because of moisture",
+    "intent": "damp"
+  },
+  {
+    "text": "There are water stains on the ceiling",
+    "intent": "damp"
+  },
+  {
+    "text": "My roof leaks when it rains",
+    "intent": "damp"
+  },
+  {
+    "text": "The wall stays damp all day",
+    "intent": "damp"
+  },
+  {
+    "text": "Green mould appeared behind my cupboard",
+    "intent": "damp"
+  },
+  {
+    "text": "There is mildew in the bathroom",
+    "intent": "damp"
+  },
+  {
+    "text": "Rainwater comes through the roof",
+    "intent": "damp"
+  },
+  {
+    "text": "The ceiling has a growing brown stain",
+    "intent": "damp"
+  },
+  {
+    "text": "The plaster is wet near the window",
+    "intent": "damp"
+  },
+  {
+    "text": "My room has damp and a musty smell",
+    "intent": "damp"
+  },
+  {
+    "text": "There are cockroaches in my kitchen",
+    "intent": "pests"
+  },
+  {
+    "text": "I saw rats in the flat",
+    "intent": "pests"
+  },
+  {
+    "text": "Ants are coming through the wall",
+    "intent": "pests"
+  },
+  {
+    "text": "There are bedbugs in the room",
+    "intent": "pests"
+  },
+  {
+    "text": "Mice keep entering the apartment",
+    "intent": "pests"
+  },
+  {
+    "text": "I found a pest infestation",
+    "intent": "pests"
+  },
+  {
+    "text": "Cockroaches appear at night",
+    "intent": "pests"
+  },
+  {
+    "text": "There are fleas in the bedroom",
+    "intent": "pests"
+  },
+  {
+    "text": "Something is scratching inside the ceiling",
+    "intent": "pests"
+  },
+  {
+    "text": "Termites are damaging the cupboard",
+    "intent": "pests"
+  },
+  {
+    "text": "I need help with a rat problem",
+    "intent": "pests"
+  },
+  {
+    "text": "There are bugs around the bed",
+    "intent": "pests"
+  },
+  {
+    "text": "The building has a cockroach problem",
+    "intent": "pests"
+  },
+  {
+    "text": "Rodents have left droppings in the cupboard",
+    "intent": "pests"
+  },
+  {
+    "text": "Can pest control check my room",
+    "intent": "pests"
+  },
+  {
+    "text": "The neighbours play loud music at night",
+    "intent": "noise"
+  },
+  {
+    "text": "I cannot sleep because of noise",
+    "intent": "noise"
+  },
+  {
+    "text": "The next room is shouting every evening",
+    "intent": "noise"
+  },
+  {
+    "text": "There is loud construction noise early",
+    "intent": "noise"
+  },
+  {
+    "text": "My neighbour has noisy parties",
+    "intent": "noise"
+  },
+  {
+    "text": "People keep making noise after midnight",
+    "intent": "noise"
+  },
+  {
+    "text": "The upstairs flat makes constant noise",
+    "intent": "noise"
+  },
+  {
+    "text": "I want to raise a noise complaint",
+    "intent": "noise"
+  },
+  {
+    "text": "The music next door is too loud",
+    "intent": "noise"
+  },
+  {
+    "text": "Other tenants are disturbing my sleep",
+    "intent": "noise"
+  },
+  {
+    "text": "There is banging from the room above",
+    "intent": "noise"
+  },
+  {
+    "text": "The neighbours keep shouting late at night",
+    "intent": "noise"
+  },
+  {
+    "text": "Please help with persistent loud music",
+    "intent": "noise"
+  },
+  {
+    "text": "The building is too noisy to rest",
+    "intent": "noise"
+  },
+  {
+    "text": "A tenant is playing speakers loudly every night",
+    "intent": "noise"
+  },
+  {
+    "text": "How can I pay my rent",
+    "intent": "rent"
+  },
+  {
+    "text": "Where do I find the rent balance",
+    "intent": "rent"
+  },
+  {
+    "text": "I think my rent amount is wrong",
+    "intent": "rent"
+  },
+  {
+    "text": "My payment is not showing",
+    "intent": "rent"
+  },
+  {
+    "text": "Can I get a rent receipt",
+    "intent": "rent"
+  },
+  {
+    "text": "When is the monthly rent due",
+    "intent": "rent"
+  },
+  {
+    "text": "I paid but the balance has not updated",
+    "intent": "rent"
+  },
+  {
+    "text": "I need to discuss late rent",
+    "intent": "rent"
+  },
+  {
+    "text": "The rent charge looks incorrect",
+    "intent": "rent"
+  },
+  {
+    "text": "How do I check unpaid rent",
+    "intent": "rent"
+  },
+  {
+    "text": "Where can I see my payment history",
+    "intent": "rent"
+  },
+  {
+    "text": "I cannot afford the rent on time",
+    "intent": "rent"
+  },
+  {
+    "text": "The checkout did not confirm my payment",
+    "intent": "rent"
+  },
+  {
+    "text": "I was charged rent twice",
+    "intent": "rent"
+  },
+  {
+    "text": "I have a question about my monthly rent bill",
+    "intent": "rent"
+  },
+  {
+    "text": "My maintenance report has no update",
+    "intent": "followup"
+  },
+  {
+    "text": "The landlord has not replied to my complaint",
+    "intent": "followup"
+  },
+  {
+    "text": "Nobody has come to repair the problem",
+    "intent": "followup"
+  },
+  {
+    "text": "When will someone attend my report",
+    "intent": "followup"
+  },
+  {
+    "text": "I am waiting for the contractor",
+    "intent": "followup"
+  },
+  {
+    "text": "Can I follow up on my maintenance request",
+    "intent": "followup"
+  },
+  {
+    "text": "The repair appointment was missed",
+    "intent": "followup"
+  },
+  {
+    "text": "There has been no response about my issue",
+    "intent": "followup"
+  },
+  {
+    "text": "My complaint is still unresolved",
+    "intent": "followup"
+  },
+  {
+    "text": "The contractor did not arrive",
+    "intent": "followup"
+  },
+  {
+    "text": "I need an update about the reported fault",
+    "intent": "followup"
+  },
+  {
+    "text": "The agency has not acknowledged my report",
+    "intent": "followup"
+  },
+  {
+    "text": "My repair request has been open for days",
+    "intent": "followup"
+  },
+  {
+    "text": "I am still waiting for someone to fix it",
+    "intent": "followup"
+  },
+  {
+    "text": "Please tell me how to follow up with the landlord",
+    "intent": "followup"
+  }
+]

@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
+$python = Join-Path $PSScriptRoot '.landkeep-runtime\Scripts\python.exe'
+if (!(Test-Path $python)) { $python = Join-Path $PSScriptRoot 'backend\.venv\Scripts\python.exe' }
+if (!(Test-Path $python)) { throw 'Run START-LANDKEEP.cmd first to install the project environment.' }
 Set-Location (Join-Path $PSScriptRoot 'backend')
-$python = Join-Path $PWD '.venv\Scripts\python.exe'
-if (!(Test-Path $python)) { throw 'Run the Python setup commands in RUN-LANDKEEP.md first.' }
 & $python -m alembic upgrade head
 if ($LASTEXITCODE -ne 0) { throw 'Database migration failed. See the error above.' }
 & $python initialize_demo.py

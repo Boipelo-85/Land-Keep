@@ -93,7 +93,7 @@ def test_chat_escalation_records_prediction_and_keeps_interim_advice(client, mon
     from app.services import maintenance_chat
     _, lease_id = _tenant_with_lease()
     headers = auth(client, 'tenant-chat@test.com')
-    monkeypatch.setattr(maintenance_chat, 'analyze_with_claude', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('offline')))
+    monkeypatch.setattr(maintenance_chat, 'analyze_with_ai', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('offline')))
     cid = client.post('/maintenance/conversations', json={'lease_id': lease_id}, headers=headers).json()['id']
     client.post(f'/maintenance/conversations/{cid}/messages', data={'text': 'The kitchen tap is leaking'}, headers=headers)
     response = client.post(f'/maintenance/conversations/{cid}/escalate', headers=headers)

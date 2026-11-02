@@ -6,6 +6,8 @@ import { apiThunk } from './helpers'
 export const fetchMyLeases = apiThunk('leases/fetchMine', () => api.myLeases())
 export const acceptLease = apiThunk('leases/accept', (id) => api.acceptLease(id))
 
+export const selectHasActiveLease = (state) => state.leases.items.some((lease) => lease.status === 'active')
+
 const initialState = { items: [], status: 'idle', error: null }
 
 export default createSlice({
@@ -30,6 +32,7 @@ export default createSlice({
       .addCase(acceptLease.fulfilled, (state, { payload }) => {
         const i = state.items.findIndex((l) => l.id === payload.id)
         if (i >= 0) state.items[i] = payload
+        else state.items.push(payload)
       })
   },
 }).reducer

@@ -274,11 +274,7 @@ def main() -> None:
 
                 if paid_on is not None and paid_on <= TODAY:
                     paid_at = at(paid_on, rng.randint(7, 18), rng.randint(0, 59))
-<<<<<<< HEAD
                     s.add(m.Payment(charge_id=charge.id, amount_cents=round(lease.monthly_rent * 100), paid_at=paid_at,
-=======
-                    s.add(m.Payment(charge_id=charge.id, amount=lease.monthly_rent, paid_at=paid_at,
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
                                     method=rng.choices(["eft", "debit_order", "cash"], [80, 15, 5])[0],
                                     created_at=paid_at))
                 elif due < TODAY:

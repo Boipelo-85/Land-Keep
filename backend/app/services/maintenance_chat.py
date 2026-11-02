@@ -1,19 +1,15 @@
-"""Safety-first maintenance chat orchestration and Claude vision adapter."""
+"""Safety-first maintenance chat orchestration and Gemini vision adapter."""
 from __future__ import annotations
 
 import base64
 import json
-<<<<<<< HEAD
 import logging
 import os
 import re
-=======
-import os
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, PrivateAttr, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -21,7 +17,6 @@ from .. import models as m
 from ..database import BASE_DIR
 from .maintenance_storage import read_private_attachment
 
-<<<<<<< HEAD
 logger = logging.getLogger(__name__)
 
 PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "maintenance_chat_system.txt"
@@ -29,11 +24,7 @@ DISCLAIMER = "These suggestions are general guidance, not a professional inspect
 
 
 class AnalysisOutputError(ValueError):
-    """Claude answered but its structured assessment could not be trusted."""
-=======
-PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "maintenance_chat_system.txt"
-DISCLAIMER = "These suggestions are general guidance, not a professional inspection."
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
+    """The AI provider answered but its structured assessment could not be trusted."""
 TRIGGERS = {
     "gas smell": "gas", "smell of gas": "gas", "smell gas": "gas", "gas leak": "gas",
     "exposed wiring": "electrical", "live wire": "electrical", "sparking": "electrical",
@@ -48,6 +39,7 @@ TRIGGERS = {
 
 
 class Analysis(BaseModel):
+    _from_local: bool = PrivateAttr(default=False)
     reply: str = Field(min_length=1, max_length=2000)
     category: str
     urgency: str
@@ -65,7 +57,6 @@ def detect_emergency(text: str) -> str | None:
     return next((kind for phrase, kind in TRIGGERS.items() if phrase in normalized), None)
 
 
-<<<<<<< HEAD
 def normalize_message(text: str) -> str:
     text = text.lower().replace("’", "'")
     for wrong, right in {"cant": "can't", "cnt": "can't", "cannnot": "cannot", "mu": "my", "kyes": "keys", "keeys": "keys"}.items():
@@ -82,14 +73,10 @@ def key_issue(text: str) -> bool:
 def wants_landlord(text: str) -> bool:
     if key_issue(text):
         return True
-=======
-def wants_landlord(text: str) -> bool:
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     normalized = " ".join(text.lower().replace("’", "'").split())
     return any(phrase in normalized for phrase in (
         "report this", "report it", "tell my landlord", "contact my landlord",
         "i want the landlord", "speak to my landlord", "send this to my landlord",
-<<<<<<< HEAD
         "i want to report", "landlord please", "spare key", "need a key", "need keys",
         "locked out", "lost key", "lost keys", "lost my key",
     ))
@@ -141,12 +128,6 @@ def landlord_followup_reply(text: str) -> str:
     return f"I've added this update to your maintenance report for your landlord. {advice} {DISCLAIMER}"
 
 
-=======
-        "i want to report", "landlord please",
-    ))
-
-
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 def emergency_reply(kind: str) -> str:
     extra = {
         "gas": "Do not operate switches or flames. Leave the area and call local emergency services or the gas provider from outside.",
@@ -161,7 +142,6 @@ def emergency_reply(kind: str) -> str:
     return f"This may be an emergency. {extra} I have sent an urgent report to your landlord. {DISCLAIMER}"
 
 
-<<<<<<< HEAD
 def interim_assessment(text: str) -> Analysis:
     """Deterministic interim guidance; not a trained classifier or a diagnosis."""
     normalized = text.lower().replace("’", "'")
@@ -374,101 +354,65 @@ def fallback_analysis(*, send_to_landlord: bool = False, user_text: str = "") ->
                     likely_cause="Unknown", confidence=0, diy_appropriate=False)
 
 
-def analyze_with_claude(text: str, image_paths: list[str], *, escalated: bool = False) -> Analysis:
-    """Call Claude with vision; no API key means safe human-review fallback."""
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        logger.warning("AI analysis failed: API key not configured")
-=======
-def fallback_analysis() -> Analysis:
-    return Analysis(reply=f"I couldn't safely assess this just now, so I sent this to your landlord for human review. {DISCLAIMER}",
-                    category="other", urgency="medium", summary="Needs human review; AI analysis unavailable",
-                    likely_cause="Unknown", confidence=0, diy_appropriate=False)
+def analyze_with_ai(text: str, image_paths: list[str], *, escalated: bool = False) -> Analysis:
+    """Assess text and private photos with Gemini; failures use the caller's local fallback."""
+    import httpx
 
-
-def analyze_with_claude(text: str, image_paths: list[str]) -> Analysis:
-    """Call Claude with vision; no API key means safe human-review fallback."""
-    if not os.getenv("ANTHROPIC_API_KEY"):
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
-        raise RuntimeError("ANTHROPIC_API_KEY is not configured")
-    import anthropic
-
-    schema: dict[str, Any] = {
-        "type": "object", "additionalProperties": False,
-        "properties": {
-            "reply": {"type": "string"}, "category": {"type": "string"},
-            "urgency": {"type": "string"}, "summary": {"type": "string"},
-            "likely_cause": {"type": "string"}, "confidence": {"type": "number"},
-            "diy_appropriate": {"type": "boolean"}, "suggested_steps": {"type": "array", "items": {"type": "string"}},
-            "needs_follow_up": {"type": "boolean"}, "follow_up_question": {"type": ["string", "null"]},
-        }, "required": ["reply", "category", "urgency", "summary", "likely_cause", "confidence", "diy_appropriate", "suggested_steps", "needs_follow_up", "follow_up_question"],
-    }
-    content: list[dict[str, Any]] = [{"type": "text", "text": text}]
+    key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY is not configured")
+    model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
+    if not re.fullmatch(r"[a-zA-Z0-9._-]+", model):
+        raise ValueError("Invalid Gemini model name")
+    parts: list[dict[str, Any]] = [{"text": text}]
     for path in image_paths:
-        data = read_private_attachment(path)
-        suffix = Path(path).suffix.lower()
-        media = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}[suffix]
-        content.append({"type": "image", "source": {"type": "base64", "media_type": media, "data": base64.b64encode(data).decode("ascii")}})
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"], timeout=float(os.getenv("MAINTENANCE_AI_TIMEOUT_SECONDS", "20")), max_retries=0)
-<<<<<<< HEAD
+        media = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}[Path(path).suffix.lower()]
+        parts.append({"inlineData": {"mimeType": media, "data": base64.b64encode(read_private_attachment(path)).decode("ascii")}})
     system_prompt = PROMPT_PATH.read_text(encoding="utf-8")
     if escalated:
         system_prompt += (
-            "\n\nThis is a follow-up on a request already sent to the landlord. "
-            "Acknowledge that the new detail is being added to that existing report. "
-            "Give a short, relevant, low-risk step the tenant can take while waiting, "
-            "or ask one focused question if the issue is unclear. Never say the landlord has read it, "
-            "never promise a response time, and do not ask whether a self-help suggestion solved it."
+            "\nThis request was already sent to the landlord. Use the newest detail and photos to keep helping. "
+            "Offer relevant low-risk advice or one focused question. Do not repeat generic acknowledgements, "
+            "claim the landlord has read it, promise a response time, or ask whether to send it again."
         )
-    response = client.messages.create(
-        model=os.getenv("MAINTENANCE_AI_MODEL", "claude-haiku-5-5"), max_tokens=1000,
-        system=system_prompt,
-=======
-    response = client.messages.create(
-        model=os.getenv("MAINTENANCE_AI_MODEL", "claude-sonnet-5-5"), max_tokens=1000,
-        system=PROMPT_PATH.read_text(encoding="utf-8"),
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
-        tools=[{"name": "maintenance_assessment", "description": "Return a validated maintenance assessment", "input_schema": schema}],
-        tool_choice={"type": "tool", "name": "maintenance_assessment"},
-        messages=[{"role": "user", "content": content}],
+    payload = {
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"role": "user", "parts": parts}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseJsonSchema": Analysis.model_json_schema(),
+            "maxOutputTokens": 2048,
+            "thinkingConfig": {"thinkingLevel": "low"},
+        },
+    }
+    response = httpx.post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+        headers={"x-goog-api-key": key}, json=payload,
+        timeout=min(float(os.getenv("MAINTENANCE_AI_TIMEOUT_SECONDS", "12")), 15),
     )
-    block = next((b for b in response.content if getattr(b, "type", None) == "tool_use"), None)
-    if block is None:
-<<<<<<< HEAD
-        logger.warning("AI analysis failed: Claude returned no structured assessment")
-        raise AnalysisOutputError("Claude returned no structured assessment")
+    response.raise_for_status()
     try:
-        result = Analysis.model_validate(block.input)
-    except ValidationError as exc:
-        logger.warning("AI analysis failed: Schema validation error")
-        raise AnalysisOutputError("Claude returned an invalid assessment") from exc
-    if result.category not in m.CHAT_MAINTENANCE_CATEGORIES or result.urgency not in m.CHAT_MAINTENANCE_URGENCIES:
-        logger.warning("AI analysis failed: Unsupported category or urgency")
-        raise AnalysisOutputError("Claude returned unsupported category or urgency")
-=======
-        raise ValueError("Claude returned no structured assessment")
-    result = Analysis.model_validate(block.input)
-    if result.category not in m.CHAT_MAINTENANCE_CATEGORIES or result.urgency not in m.CHAT_MAINTENANCE_URGENCIES:
-        raise ValueError("Claude returned unsupported category or urgency")
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
+        candidates = response.json().get("candidates", [])
+        if not candidates or candidates[0].get("finishReason") != "STOP":
+            raise ValueError("Missing or incomplete Gemini assessment")
+        raw = "".join(part.get("text", "") for part in candidates[0].get("content", {}).get("parts", []) if not part.get("thought"))
+        result = Analysis.model_validate_json(raw)
+        if result.category not in m.CHAT_MAINTENANCE_CATEGORIES or result.urgency not in m.CHAT_MAINTENANCE_URGENCIES:
+            raise ValueError("Unsupported assessment category or urgency")
+    except (ValueError, TypeError, KeyError, ValidationError) as exc:
+        raise AnalysisOutputError("Gemini returned an invalid or incomplete assessment") from exc
     # Electrical and structural topics are always referred to a human.
     if result.category == "electrical" or any(w in text.lower() for w in ("gas", "structural", "crack in the wall")):
         result.diy_appropriate = False
         result.suggested_steps = []
         if result.category == "electrical":
             result.reply = "Electrical problems can be dangerous. Please do not touch wiring or electrical equipment. I recommend your landlord or a qualified electrician assess it."
-<<<<<<< HEAD
     result.reply = result.reply.strip()
     if DISCLAIMER.lower() not in result.reply.lower():
         result.reply = f"{result.reply} {DISCLAIMER}"
     if result.needs_follow_up and result.follow_up_question:
         result.reply += f"\n\n{result.follow_up_question}"
     elif result.diy_appropriate and not escalated:
-=======
-    result.reply = f"{result.reply.strip()} {DISCLAIMER}"
-    if result.needs_follow_up and result.follow_up_question:
-        result.reply += f"\n\n{result.follow_up_question}"
-    elif result.diy_appropriate:
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
         result.reply += "\n\nDid that solve it?"
     return result
 

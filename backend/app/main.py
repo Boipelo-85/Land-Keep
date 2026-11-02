@@ -14,11 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models  # noqa: F401  (registers the tables)
 from .database import Base, SessionLocal, engine
-<<<<<<< HEAD
 from .routers import applications, auth, contractors, leases, maintenance, payments, reminders, units
-=======
-from .routers import applications, auth, leases, maintenance, reminders, units
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 from .services.agency_reminders import TIMEZONE_NAME, run_reminders
 from datetime import timedelta
 from sqlalchemy import select
@@ -62,6 +58,10 @@ def scheduled_maintenance_escalations() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # Load local text features before the first tenant message arrives.
+    from starlette.concurrency import run_in_threadpool
+    from .services.tenant_complaints import predict_reply
+    await run_in_threadpool(predict_reply, "The kitchen sink will not drain")
     send_time = os.getenv("LANDKEEP_REMINDER_SEND_TIME", "08:00")
     hour, minute = (int(value) for value in send_time.split(":", 1))
     scheduler = BackgroundScheduler(timezone=TIMEZONE_NAME)
@@ -95,18 +95,12 @@ app.add_middleware(
 Base.metadata.create_all(engine)
 
 app.include_router(auth.router)
-<<<<<<< HEAD
 app.include_router(contractors.router)
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 app.include_router(units.router)
 app.include_router(applications.router)
 app.include_router(leases.router)
 app.include_router(maintenance.router)
-<<<<<<< HEAD
 app.include_router(payments.router)
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 app.include_router(reminders.router)
 
 

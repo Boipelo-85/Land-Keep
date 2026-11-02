@@ -27,21 +27,27 @@ function readDetail(data, fallback) {
   return fallback
 }
 
-async function send(path, { method = 'GET', body } = {}) {
+async function send(path, { method = 'GET', body, timeoutMs = 30000 } = {}) {
   const headers = {}
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData
   if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
   if (authToken) headers.Authorization = `Bearer ${authToken}`
 
+  const controller = new AbortController()
+  const deadline = setTimeout(() => controller.abort(), timeoutMs)
   let res
   try {
     res = await fetch(BASE + path, {
       method,
+      signal: controller.signal,
       headers,
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     })
-  } catch {
+  } catch (err) {
+    if (err.name === 'AbortError') throw new ApiError('The reply took too long. Your message may already be saved; refresh the chat before sending it again.', 408)
     throw new ApiError('Cannot reach the LandKeep server. Is the backend running on port 8000?', 0)
+  } finally {
+    clearTimeout(deadline)
   }
 
   if (!res.ok) {
@@ -52,14 +58,10 @@ async function send(path, { method = 'GET', body } = {}) {
     } catch {
       /* response had no JSON body */
     }
-<<<<<<< HEAD
     const fallback = [502, 503, 504].includes(res.status)
       ? 'Cannot reach the LandKeep backend. Start it on port 8000 and check LANDKEEP_API_TARGET in the frontend configuration.'
       : res.statusText || 'Something went wrong'
     throw new ApiError(readDetail(data, fallback), res.status)
-=======
-    throw new ApiError(readDetail(data, res.statusText || 'Something went wrong'), res.status)
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
   }
   return res
 }
@@ -70,7 +72,6 @@ export const api = {
   login: (body) => json('/auth/login', { method: 'POST', body }),
   register: (body) => json('/auth/register', { method: 'POST', body }),
 
-<<<<<<< HEAD
   contractors: () => json('/contractors'),
   addContractor: (body) => json('/contractors', { method: 'POST', body }),
   workOrders: () => json('/contractors/work-orders'),
@@ -80,8 +81,6 @@ export const api = {
   createLandlordProperty: (body) => json('/units/properties', { method: 'POST', body }),
   landlordUnits: () => json('/units/mine'),
   createLandlordUnit: (body) => json('/units', { method: 'POST', body }),
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
   vacantUnits: () => json('/units/vacant'),
 
   submitApplication: (body) => json('/applications', { method: 'POST', body }),
@@ -94,31 +93,22 @@ export const api = {
 
   myLeases: () => json('/leases/mine'),
   acceptLease: (id) => json(`/leases/${id}/accept`, { method: 'POST' }),
-<<<<<<< HEAD
   myRentPayments: () => json('/payments/mine'),
   createRentCheckout: (chargeId) => json(`/payments/${chargeId}/checkout`, { method: 'POST' }),
   landlordPaymentSettings: () => json('/payments/settings'),
   saveLandlordPaymentSettings: (body) => json('/payments/settings', { method: 'PUT', body }),
   verifyLandlordPaymentSettings: (body) => json('/payments/settings/verify', { method: 'POST', body }),
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 
   myMaintenance: () => json('/maintenance/mine'),
   reportMaintenance: (formData) => json('/maintenance', { method: 'POST', body: formData }),
   startMaintenanceChat: (body) => json('/maintenance/conversations', { method: 'POST', body }),
-<<<<<<< HEAD
   setMaintenancePhotoConsent: (id, consent) => json(`/maintenance/conversations/${id}/photo-consent`, { method: 'POST', body: { consent } }),
   myMaintenanceChats: () => json('/maintenance/conversations/mine'),
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
   maintenanceChat: (id) => json(`/maintenance/conversations/${id}`),
-  sendMaintenanceChat: (id, body) => json(`/maintenance/conversations/${id}/messages`, { method: 'POST', body }),
+  sendMaintenanceChat: (id, body) => json(`/maintenance/conversations/${id}/messages`, { method: 'POST', body, timeoutMs: 20000 }),
   resolveMaintenanceChat: (id, body) => json(`/maintenance/conversations/${id}/resolve`, { method: 'POST', body }),
   escalateMaintenanceChat: (id) => json(`/maintenance/conversations/${id}/escalate`, { method: 'POST' }),
-<<<<<<< HEAD
   confirmMaintenanceCategory: (id, category) => json(`/maintenance/requests/${id}/classification`, { method: 'PATCH', body: { category } }),
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
   maintenanceRequests: () => json('/maintenance/requests'),
   updateMaintenanceStatus: (id, status) => json(`/maintenance/requests/${id}/status`, { method: 'PATCH', body: { status } }),
 

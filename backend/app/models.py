@@ -12,11 +12,7 @@ Design rules:
 from datetime import date, datetime, timezone
 from typing import Optional
 
-<<<<<<< HEAD
 from sqlalchemy import Index, func, Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
-=======
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -113,11 +109,8 @@ class Unit(Base):
     status: Mapped[str] = mapped_column(String(20), default="vacant", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
-<<<<<<< HEAD
     __table_args__ = (Index("uq_unit_property_number", property_id, func.lower(unit_number), unique=True),)
 
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     property: Mapped["Property"] = relationship(back_populates="units")
 
 
@@ -196,7 +189,6 @@ class Payment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     charge_id: Mapped[int] = mapped_column(ForeignKey("rent_charges.id"), index=True)
-<<<<<<< HEAD
     amount_cents: Mapped[int] = mapped_column(Integer)
     paid_at: Mapped[datetime] = mapped_column(DateTime)
     method: Mapped[str] = mapped_column(String(20))  # eft, debit_order, cash
@@ -317,14 +309,6 @@ class LandlordPaymentSettings(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
-=======
-    amount: Mapped[float] = mapped_column(Float)
-    paid_at: Mapped[datetime] = mapped_column(DateTime)
-    method: Mapped[str] = mapped_column(String(20))  # eft, debit_order, cash
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-
-
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 class MaintenanceRequest(Base):
     __tablename__ = "maintenance_requests"
 
@@ -345,12 +329,9 @@ class MaintenanceRequest(Base):
     )
     # ML fields: what the model suggested vs what the landlord confirmed.
     # Comparing the two columns over time measures real-world model accuracy.
-<<<<<<< HEAD
     classification_model_version: Mapped[Optional[str]] = mapped_column(String(80))
     classification_priority_score: Mapped[Optional[float]] = mapped_column(Float)
     classification_score: Mapped[Optional[float]] = mapped_column(Float)
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     predicted_category: Mapped[Optional[str]] = mapped_column(String(20))
     predicted_urgency: Mapped[Optional[str]] = mapped_column(String(10))
     confirmed_category: Mapped[Optional[str]] = mapped_column(String(20))
@@ -475,7 +456,6 @@ class Notification(Base):
     body: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="sent")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-<<<<<<< HEAD
 
 
 class Contractor(Base):
@@ -499,5 +479,3 @@ class MaintenanceWorkOrder(Base):
     scheduled_for: Mapped[Optional[date]] = mapped_column(Date)
     notes: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5

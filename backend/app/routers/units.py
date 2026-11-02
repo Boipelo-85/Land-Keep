@@ -1,20 +1,12 @@
-<<<<<<< HEAD
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
-=======
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 from sqlalchemy.orm import Session
 
 from .. import models as m
 from ..database import get_db
-<<<<<<< HEAD
 from ..deps import require_landlord
 from ..schemas import PropertyCreateIn, UnitCreateIn
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 
 router = APIRouter(prefix="/units", tags=["units"])
 
@@ -32,7 +24,6 @@ def vacant_units(db: Session = Depends(get_db)):
     return [{"id": u.id, "unit_number": u.unit_number, "bedrooms": u.bedrooms,
              "monthly_rent": u.monthly_rent, "property": p.name, "address": p.address, "city": p.city}
             for u, p in rows]
-<<<<<<< HEAD
 
 
 @router.get('/properties')
@@ -80,5 +71,3 @@ def create_unit(body: UnitCreateIn, landlord: m.User = Depends(require_landlord)
     return {'id': unit.id, 'property_id': prop.id, 'property': prop.name, 'unit_number': unit.unit_number,
             'bedrooms': unit.bedrooms, 'monthly_rent': unit.monthly_rent, 'status': unit.status,
             'listed_for_applications': True, 'address': prop.address, 'city': prop.city}
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5

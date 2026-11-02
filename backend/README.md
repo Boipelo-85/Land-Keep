@@ -160,3 +160,20 @@ details are entered on PayFast's secure hosted checkout, not stored by LandKeep.
 3. ML classifier trained from `data/maintenance_requests.csv`
 >>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 4. Analytics endpoints and the React screens
+
+### Gemini maintenance chat and photos
+
+Create a Gemini API key in Google AI Studio and put it only in `backend/.env`:
+
+```env
+GEMINI_API_KEY=your_private_key
+GEMINI_MODEL=gemini-3.8-flash
+```
+
+Restart the backend after changing settings. Text and consented photos are sent
+from the backend to Gemini; earlier photos stay available on follow-up turns.
+Existing chats require acceptance of the updated Google photo-sharing notice.
+The API uses the existing httpx dependency, so no Gemini SDK installation is needed.
+Free-tier availability and quotas depend on Google's account/model limits. Free-tier
+submissions may be used to improve Google's products. Provider errors leave local
+text guidance available and explicitly explain when photos cannot be inspected.

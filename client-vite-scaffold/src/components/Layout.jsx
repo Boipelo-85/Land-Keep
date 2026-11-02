@@ -1,39 +1,36 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../store/authSlice'
+import { fetchMyLeases, selectHasActiveLease } from '../store/leasesSlice'
 
 const LINKS = {
-<<<<<<< HEAD
   landlord: [{ to: '/landlord/units', label: 'My units' }, { to: '/landlord/applications', label: 'Applications' }, { to: '/landlord/maintenance', label: 'Maintenance' }, { to: '/landlord/contractors', label: 'Contractors' }, { to: '/landlord/payments', label: 'Payment setup' }],
-=======
-  landlord: [{ to: '/landlord/applications', label: 'Applications' }, { to: '/landlord/maintenance', label: 'Maintenance' }],
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
   tenant: [
     { to: '/units', label: 'Find a unit' },
     { to: '/applications', label: 'My applications' },
     { to: '/lease', label: 'My lease' },
     { to: '/report', label: 'Report a problem' },
-<<<<<<< HEAD
     { to: '/pay-rent', label: 'Pay rent' },
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
   ],
 }
 
 // Parts of the platform that are designed for but not built yet.
 const COMING = {
   landlord: ['Rent', 'Insights'],
-<<<<<<< HEAD
   tenant: [],
-=======
-  tenant: ['Pay rent'],
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 }
 
 export default function Layout() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const user = useSelector((s) => s.auth.user)
+  const hasActiveLease = useSelector(selectHasActiveLease)
+  const leaseStatus = useSelector((s) => s.leases.status)
+
+  useEffect(() => {
+    if (user.role === 'tenant') dispatch(fetchMyLeases())
+  }, [dispatch, user.id, user.role])
 
   function signOut() {
     dispatch(logout())
@@ -46,11 +43,7 @@ export default function Layout() {
         <div className="brand">LandKeep</div>
 
         <nav className="nav" aria-label="Main">
-<<<<<<< HEAD
-          {(user.role === 'landlord' ? LINKS.landlord : LINKS.tenant).map((l) => (
-=======
-          {LINKS[user.role].map((l) => (
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
+          {(user.role === 'landlord' ? LINKS.landlord : LINKS.tenant.filter((link) => link.to !== '/units' || (leaseStatus === 'ready' && !hasActiveLease))).map((l) => (
             <NavLink key={l.to} to={l.to} className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
               {l.label}
             </NavLink>

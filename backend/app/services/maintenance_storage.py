@@ -15,7 +15,7 @@ from ..database import BASE_DIR
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
 MAX_IMAGE_DIMENSION = 1600
 PRIVATE_IMAGE_DIR = BASE_DIR / "storage" / "maintenance-chat"
-NOTICE_VERSION = "maintenance-photo-sharing-v1"
+NOTICE_VERSION = "maintenance-gemini-photo-sharing-v2"
 FORMATS = {
     "JPEG": ("image/jpeg", ".jpg"),
     "PNG": ("image/png", ".png"),

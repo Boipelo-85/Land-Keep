@@ -76,6 +76,11 @@ def main():
     if subprocess.run([str(a) for a in check_model], cwd=BACKEND).returncode != 0:
         print('Training maintenance classifier from the bundled labelled dataset...', flush=True)
         run([python, 'train_maintenance_classifier.py'], cwd=BACKEND)
+    # Train the local text complaint router if the bundled artifact is missing/incompatible.
+    check_complaints = [python, '-c', "from app.services.tenant_complaints import MODEL, _load; _load(MODEL.stat().st_mtime_ns)"]
+    if subprocess.run([str(a) for a in check_complaints], cwd=BACKEND).returncode != 0:
+        print('Training local tenant complaint model...', flush=True)
+        run([python, 'train_tenant_complaints.py'], cwd=BACKEND)
     print('Preparing database (existing records are retained)...', flush=True)
     run([python, '-m', 'alembic', 'upgrade', 'head'], cwd=BACKEND)
     run([python, 'initialize_demo.py'], cwd=BACKEND)

@@ -60,3 +60,31 @@ To inspect status while signed in, call `GET /maintenance/classifier/status`. Th
 The bundled v2 artifact also fits a separate TF-IDF/logistic-regression classifier to the dataset's low/high urgency labels. It records suggested priority and model score alongside category, while emergency detection overrides any low learned suggestion. The local chat can use the learned category to choose a safe clarifying question when a phrase is unfamiliar; it is still not a generative language model.
 
 Priority group-held-out accuracy: 72.3%; macro F1: 0.606. These are synthetic-data results, not production performance guarantees. No priority labels were available for the small separate category QA set.
+
+## Fast tenant complaint replies
+
+A separate fitted local intent model now uses 180 assistant-authored synthetic
+complaints, 15 per intent: leaks, no water, blocked drains, electrical supply,
+lighting, hot water, keys/access, damp/mould, pests, noise, rent/payment questions,
+and unanswered maintenance/contractor follow-ups. Training does not read the
+application database or fine-tune Gemini. Run `backend/train_tenant_complaints.py`
+with the project Python environment to rebuild it.
+
+The model uses word/character TF-IDF and logistic regression. High-scoring,
+well-separated predictions with matching vocabulary select reviewed reply
+text immediately, before Gemini. This is trained intent classification plus
+response templates, not a locally trained conversational language model.
+Short/uncertain messages and photos continue through the existing AI flow.
+Emergency detection and explicit landlord-report actions take precedence.
+
+The 75/25 stratified synthetic phrase holdout had 45 test examples: accuracy
+57.8%, macro F1 0.555. Related phrasing may occur on both sides, so this is not
+an independent real-world benchmark. The fixed confidence/margin/similarity
+checks routed 14/45 examples locally (31.1% coverage); all 14 were correct on
+this small test. Do not interpret that as guaranteed accuracy. Warm classification
+averaged about 4 ms in the recorded run; full request time also includes server,
+database, and first-load costs. No real tenant reports were used.
+
+Artifacts: `backend/ml/tenant_complaints.joblib` and its JSON metrics.
+Training examples: `backend/ml/training/tenant_complaints.json`.
+Set `LANDKEEP_LOCAL_COMPLAINTS=false` to disable local routing.

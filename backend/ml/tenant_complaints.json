@@ -1,0 +1,20 @@
+{
+  "version": "tenant-intents-v1-64d1faabdcb7",
+  "training_rows": 180,
+  "intent_count": 12,
+  "sklearn_version": "1.9.1",
+  "source": "180 assistant-authored synthetic tenant complaints; no private tenant data",
+  "threshold": 0.45,
+  "margin": 0.15,
+  "minimum_similarity": 0.25,
+  "evaluation": {
+    "method": "Stratified phrase holdout, 75% train and 25% test; related phrasings may occur on both sides",
+    "test_rows": 45,
+    "accuracy": 0.5777777777777777,
+    "macro_f1": 0.5548520923520923,
+    "local_coverage": 0.3111111111111111,
+    "routed_accuracy": 1.0
+  },
+  "warm_classification_ms": 4.034725000383332,
+  "limitations": "Text intent classification with reviewed response templates, not a generative model or photo analyser. Scores are uncalibrated. Synthetic evaluation is not real-world accuracy."
+}

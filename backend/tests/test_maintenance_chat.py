@@ -1,3 +1,4 @@
+import pytest
 from datetime import date
 
 from app import models as m
@@ -5,6 +6,12 @@ from app.database import SessionLocal
 from app.services import maintenance_chat
 from app.security import hash_password
 from conftest import auth
+
+
+@pytest.fixture(autouse=True)
+def exercise_provider_path(monkeypatch):
+    # These tests explicitly exercise provider replies/outages; local routing is tested separately.
+    monkeypatch.setenv("LANDKEEP_LOCAL_COMPLAINTS", "false")
 
 
 def _tenant_with_lease():
@@ -28,19 +35,16 @@ def test_emergency_triggers_and_fallback_are_safe():
     assert result.category == "other"
     assert result.urgency == "medium"
     assert result.diy_appropriate is False
-<<<<<<< HEAD
     tap_help = maintenance_chat.fallback_analysis(user_text="My tap can't take out water")
     assert tap_help.category == "plumbing"
     assert tap_help.diy_appropriate is True
     assert "Check whether other taps have water" in tap_help.reply
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 
 
 def test_emergency_chat_skips_ai_and_creates_urgent_agency_request(client, monkeypatch):
     _, lease_id = _tenant_with_lease()
     monkeypatch.setenv("LANDKEEP_REMINDER_CONSOLE", "true")
-    monkeypatch.setattr(maintenance_chat, "analyze_with_claude", lambda *args: (_ for _ in ()).throw(AssertionError("AI must not run for emergency")))
+    monkeypatch.setattr(maintenance_chat, "analyze_with_ai", lambda *args: (_ for _ in ()).throw(AssertionError("AI must not run for emergency")))
     tenant_headers = auth(client, "tenant-chat@test.com")
     started = client.post("/maintenance/conversations", json={"lease_id": lease_id, "photo_sharing_consent": True}, headers=tenant_headers)
     assert started.status_code == 201
@@ -55,10 +59,7 @@ def test_emergency_chat_skips_ai_and_creates_urgent_agency_request(client, monke
     assert requests.status_code == 200
     assert len(requests.json()) == 1
     assert requests.json()[0]["tenant"] == "Nandi Dlamini"
-<<<<<<< HEAD
     assert requests.json()[0]["primary_issue"] == "I smell gas in the kitchen"
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 
 
 def test_other_agency_cannot_read_chat(client):
@@ -69,12 +70,11 @@ def test_other_agency_cannot_read_chat(client):
     other_landlord = auth(client, "other@test.com")
     response = client.get(f"/maintenance/conversations/{conversation_id}", headers=other_landlord)
     assert response.status_code == 404
-<<<<<<< HEAD
 
 
 def test_ai_outage_keeps_chat_open_and_allows_more_messages(client, monkeypatch):
     _, lease_id = _tenant_with_lease()
-    monkeypatch.setattr(maintenance_chat, "analyze_with_claude", lambda *args: (_ for _ in ()).throw(RuntimeError("AI unavailable")))
+    monkeypatch.setattr(maintenance_chat, "analyze_with_ai", lambda *args: (_ for _ in ()).throw(RuntimeError("AI unavailable")))
     tenant_headers = auth(client, "tenant-chat@test.com")
     started = client.post("/maintenance/conversations", json={"lease_id": lease_id}, headers=tenant_headers)
     conversation_id = started.json()["id"]
@@ -106,7 +106,7 @@ def test_tenant_can_resume_escalated_chat_and_add_followup(client, monkeypatch):
         return maintenance_chat.Analysis(reply="Contact someone you trust who may have a spare key; don't force the door. These suggestions are general guidance, not a professional inspection.",
             category="doors_locks", urgency="medium", summary="Tenant lost keys", likely_cause="Unknown",
             confidence=0.9, diy_appropriate=True)
-    monkeypatch.setattr(maintenance_chat, "analyze_with_claude", fake_analysis)
+    monkeypatch.setattr(maintenance_chat, "analyze_with_ai", fake_analysis)
 
     resumed = client.get("/maintenance/conversations/mine", headers=tenant_headers)
     assert resumed.status_code == 200
@@ -137,7 +137,7 @@ def test_photo_consent_can_be_given_inside_an_existing_chat(client):
 def test_followup_does_not_close_unresolved_report(client, monkeypatch):
     _, lease_id = _tenant_with_lease()
     headers = auth(client, "tenant-chat@test.com")
-    monkeypatch.setattr(maintenance_chat, "analyze_with_claude", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("offline")))
+    monkeypatch.setattr(maintenance_chat, "analyze_with_ai", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("offline")))
     cid = client.post("/maintenance/conversations", json={"lease_id": lease_id}, headers=headers).json()["id"]
     client.post(f"/maintenance/conversations/{cid}/escalate", headers=headers)
     response = client.post(f"/maintenance/conversations/{cid}/messages", data={"text": "It is not fixed, still leaking"}, headers=headers)
@@ -149,7 +149,7 @@ def test_followup_does_not_close_unresolved_report(client, monkeypatch):
 def test_urgent_ai_assessment_creates_report(client, monkeypatch):
     _, lease_id = _tenant_with_lease()
     headers = auth(client, "tenant-chat@test.com")
-    monkeypatch.setattr(maintenance_chat, "analyze_with_claude", lambda *a, **k: maintenance_chat.Analysis(
+    monkeypatch.setattr(maintenance_chat, "analyze_with_ai", lambda *a, **k: maintenance_chat.Analysis(
         reply="Please keep away and ask your landlord for help.", category="plumbing", urgency="high",
         summary="Major leak", likely_cause="Pipe damage", confidence=0.9, diy_appropriate=False))
     cid = client.post("/maintenance/conversations", json={"lease_id": lease_id}, headers=headers).json()["id"]
@@ -181,14 +181,14 @@ def test_fallback_uses_tenant_context_only():
 def test_short_messages_and_context_after_escalation(client, monkeypatch):
     _, lease_id = _tenant_with_lease()
     headers = auth(client, 'tenant-chat@test.com')
-    monkeypatch.setattr(maintenance_chat, 'analyze_with_claude', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('offline')))
+    monkeypatch.setattr(maintenance_chat, 'analyze_with_ai', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('offline')))
     cid = client.post('/maintenance/conversations', json={'lease_id': lease_id}, headers=headers).json()['id']
     client.post(f'/maintenance/conversations/{cid}/escalate', headers=headers)
     def send(text):
         response = client.post(f'/maintenance/conversations/{cid}/messages', data={'text': text}, headers=headers)
         assert response.status_code == 200
         assert response.json()['status'] == 'escalated'
-        assert response.json()['assistant_mode'] == 'local'
+        assert response.json()['assistant_mode'] == ('instant' if text == 'hey' else 'local')
         return response.json()['messages'][-1]['text']
     assert 'What did you lose' in send('I lost')
     assert 'locked out' in send('My keys')
@@ -208,7 +208,7 @@ def test_local_plumbing_followup_advances_conversation():
 def test_manual_escalation_immediately_returns_relevant_guidance(client, monkeypatch):
     _, lease_id = _tenant_with_lease()
     headers = auth(client, 'tenant-chat@test.com')
-    monkeypatch.setattr(maintenance_chat, 'analyze_with_claude', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('offline')))
+    monkeypatch.setattr(maintenance_chat, 'analyze_with_ai', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('offline')))
     cid = client.post('/maintenance/conversations', json={'lease_id': lease_id}, headers=headers).json()['id']
     client.post(f'/maintenance/conversations/{cid}/messages', data={'text': 'My kitchen tap is leaking'}, headers=headers)
     response = client.post(f'/maintenance/conversations/{cid}/escalate', headers=headers)
@@ -229,7 +229,7 @@ def test_manual_escalation_immediately_returns_relevant_guidance(client, monkeyp
 def test_not_solved_escalation_includes_interim_guidance(client, monkeypatch):
     _, lease_id = _tenant_with_lease()
     headers = auth(client, 'tenant-chat@test.com')
-    monkeypatch.setattr(maintenance_chat, 'analyze_with_claude', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('offline')))
+    monkeypatch.setattr(maintenance_chat, 'analyze_with_ai', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('offline')))
     cid = client.post('/maintenance/conversations', json={'lease_id': lease_id}, headers=headers).json()['id']
     client.post(f'/maintenance/conversations/{cid}/messages', data={'text': 'My socket does not work'}, headers=headers)
     response = client.post(f'/maintenance/conversations/{cid}/resolve', json={'solved': False}, headers=headers)
@@ -254,7 +254,7 @@ def test_interim_guidance_covers_categories_and_emergency():
 def test_exact_missing_keys_messages_from_screenshot(client, monkeypatch):
     _, lease_id = _tenant_with_lease()
     headers = auth(client, 'tenant-chat@test.com')
-    monkeypatch.setattr(maintenance_chat,'analyze_with_claude',lambda *a,**k: (_ for _ in ()).throw(RuntimeError('offline')))
+    monkeypatch.setattr(maintenance_chat,'analyze_with_ai',lambda *a,**k: (_ for _ in ()).throw(RuntimeError('offline')))
     cid=client.post('/maintenance/conversations',json={'lease_id':lease_id},headers=headers).json()['id']
     client.post(f'/maintenance/conversations/{cid}/escalate',headers=headers)
     first=client.post(f'/maintenance/conversations/{cid}/messages',data={'text':'I cant find mu unit keys hey.'},headers=headers).json()
@@ -278,5 +278,126 @@ def test_local_chat_uses_learned_category_for_unfamiliar_wording(monkeypatch):
 def test_negative_plumbing_followup_is_not_reversed():
     response=maintenance_chat.conversational_fallback('tenant: My kitchen tap has no water\ntenant: No other taps work')
     assert 'also have no water' in response.reply
-=======
->>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
+
+
+def test_photo_context_survives_followups_and_honours_revoked_consent(client, monkeypatch, tmp_path):
+    from io import BytesIO
+    from PIL import Image
+    from app.services import maintenance_storage
+
+    monkeypatch.setattr(maintenance_storage, "BASE_DIR", tmp_path)
+    monkeypatch.setattr(maintenance_storage, "PRIVATE_IMAGE_DIR", tmp_path / "storage" / "maintenance-chat")
+    _, lease_id = _tenant_with_lease()
+    headers = auth(client, "tenant-chat@test.com")
+    cid = client.post("/maintenance/conversations", json={"lease_id": lease_id, "photo_sharing_consent": True}, headers=headers).json()["id"]
+    calls = []
+
+    def analyze(text, paths, **kwargs):
+        calls.append((text, list(paths), kwargs))
+        return maintenance_chat.Analysis(reply="Which part of this fixture concerns you?", category="other", urgency="low", summary="Photo follow-up", likely_cause="Not established", confidence=0.4, diy_appropriate=False)
+
+    monkeypatch.setattr(maintenance_chat, "analyze_with_ai", analyze)
+    buffer = BytesIO()
+    Image.new("RGB", (32, 32), "blue").save(buffer, format="PNG")
+    url = f"/maintenance/conversations/{cid}/messages"
+    response = client.post(url, data={"text": "Look at this fixture"}, files={"photos": ("fixture.png", buffer.getvalue(), "image/png")}, headers=headers)
+    assert response.status_code == 200
+    assert len(calls[-1][1]) == 1
+    original_paths = calls[-1][1]
+    response = client.post(url, data={"text": "Check the picture hey"}, headers=headers)
+    assert response.json()["assistant_mode"] == "ai"
+    assert calls[-1][1] == original_paths
+    assert "Check the picture hey" in calls[-1][0]
+    client.post(f"/maintenance/conversations/{cid}/escalate", headers=headers)
+    response = client.post(url, data={"text": "Look at the earlier photo again"}, headers=headers)
+    assert response.status_code == 200
+    assert calls[-1][1] == original_paths
+    assert calls[-1][2]["escalated"] is True
+    client.post(f"/maintenance/conversations/{cid}/photo-consent", json={"consent": False}, headers=headers)
+    client.post(url, data={"text": "Any other advice?"}, headers=headers)
+    assert calls[-1][1] == []
+
+
+def test_photo_provider_failure_is_explained(client, monkeypatch, tmp_path):
+    from io import BytesIO
+    from PIL import Image
+    from app.services import maintenance_storage
+    monkeypatch.setattr(maintenance_storage, "BASE_DIR", tmp_path)
+    monkeypatch.setattr(maintenance_storage, "PRIVATE_IMAGE_DIR", tmp_path / "storage" / "maintenance-chat")
+    _, lease_id = _tenant_with_lease()
+    headers = auth(client, "tenant-chat@test.com")
+    cid = client.post("/maintenance/conversations", json={"lease_id": lease_id, "photo_sharing_consent": True}, headers=headers).json()["id"]
+    def unavailable(*args, **kwargs):
+        raise RuntimeError("Provider unavailable")
+    monkeypatch.setattr(maintenance_chat, "analyze_with_ai", unavailable)
+    buffer = BytesIO()
+    Image.new("RGB", (32, 32), "blue").save(buffer, format="PNG")
+    response = client.post(f"/maintenance/conversations/{cid}/messages", files={"photos": ("fixture.png", buffer.getvalue(), "image/png")}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["assistant_mode"] == "local"
+    assert "cannot inspect your pictures" in response.json()["messages"][-1]["text"]
+
+
+def test_ai_wait_does_not_hold_database_write_lock(client, monkeypatch):
+    from sqlalchemy import update
+    from app.database import engine
+    _, lease_id = _tenant_with_lease()
+    headers = auth(client, "tenant-chat@test.com")
+    cid = client.post("/maintenance/conversations", json={"lease_id": lease_id}, headers=headers).json()["id"]
+    calls = []
+    def analyze(text, paths, **kwargs):
+        # Another request must be able to save while the AI provider is running.
+        with engine.connect() as connection:
+            connection.exec_driver_sql("PRAGMA busy_timeout=100")
+            connection.execute(update(m.Property).values(name="Updated while AI waits"))
+            connection.commit()
+        with SessionLocal() as db:
+            assert db.query(m.MaintenanceMessage).filter_by(conversation_id=cid, role="tenant").count() == len(calls) + 1
+        calls.append(kwargs)
+        return maintenance_chat.Analysis(reply="Which part needs attention?", category="other", urgency="low", summary="Follow-up", likely_cause="Unknown", confidence=0.2, diy_appropriate=False)
+    monkeypatch.setattr(maintenance_chat, "analyze_with_ai", analyze)
+    url = f"/maintenance/conversations/{cid}/messages"
+    response = client.post(url, data={"text": "Can you help?"}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["assistant_mode"] == "ai"
+    assert len(calls) == 1
+    client.post(f"/maintenance/conversations/{cid}/escalate", headers=headers)
+    response = client.post(url, data={"text": "Any update?"}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["assistant_mode"] == "ai"
+    assert len(calls) == 2
+    assert calls[-1]["escalated"] is True
+
+
+def test_greeting_replies_without_waiting_for_provider(client, monkeypatch):
+    _, lease_id = _tenant_with_lease()
+    headers = auth(client, "tenant-chat@test.com")
+    cid = client.post("/maintenance/conversations", json={"lease_id": lease_id}, headers=headers).json()["id"]
+    def should_not_run(*args, **kwargs):
+        raise AssertionError("Greeting must not call provider")
+    monkeypatch.setattr(maintenance_chat, "analyze_with_ai", should_not_run)
+    response = client.post(f"/maintenance/conversations/{cid}/messages", data={"text": "hey."}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["assistant_mode"] == "instant"
+    assert "Hi! I'm here" in response.json()["messages"][-1]["text"]
+
+
+def test_slow_ai_returns_fallback_within_overall_deadline(client, monkeypatch):
+    import asyncio
+    import time
+    from app.routers import maintenance
+    _, lease_id = _tenant_with_lease()
+    headers = auth(client, "tenant-chat@test.com")
+    cid = client.post("/maintenance/conversations", json={"lease_id": lease_id}, headers=headers).json()["id"]
+    monkeypatch.setenv("MAINTENANCE_AI_TIMEOUT_SECONDS", "0.1")
+    async def slow_provider(*args, **kwargs):
+        await asyncio.sleep(10)
+        raise AssertionError("Deadline should cancel waiting")
+    monkeypatch.setattr(maintenance, "run_in_threadpool", slow_provider)
+    started = time.monotonic()
+    response = client.post(f"/maintenance/conversations/{cid}/messages", data={"text": "My bathroom tap is dripping"}, headers=headers)
+    assert time.monotonic() - started < 2
+    assert response.status_code == 200
+    assert response.json()["assistant_mode"] == "local"
+    assert "Live AI is unavailable" in response.json()["messages"][-1]["text"]
+    assert any(item["text"] == "My bathroom tap is dripping" for item in response.json()["messages"])
