@@ -52,7 +52,10 @@ class ConvertIn(BaseModel):
 
 
 class MaintenanceOut(BaseModel):
+<<<<<<< HEAD
     classification: Optional[dict] = None
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     id: int
     description: str
     status: str
@@ -84,6 +87,7 @@ class TenantReminderPreferencesIn(BaseModel):
     whatsapp_opt_in: Optional[bool] = None
     sms_opt_in: Optional[bool] = None
     email_opt_in: Optional[bool] = None
+<<<<<<< HEAD
 
 
 class PropertyCreateIn(BaseModel):
@@ -99,3 +103,5 @@ class UnitCreateIn(BaseModel):
     unit_number: str = Field(min_length=1, max_length=20)
     bedrooms: int = Field(ge=0, le=20)
     monthly_rent: float = Field(gt=0, le=100000000, allow_inf_nan=False)
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5

@@ -28,10 +28,13 @@ def test_emergency_triggers_and_fallback_are_safe():
     assert result.category == "other"
     assert result.urgency == "medium"
     assert result.diy_appropriate is False
+<<<<<<< HEAD
     tap_help = maintenance_chat.fallback_analysis(user_text="My tap can't take out water")
     assert tap_help.category == "plumbing"
     assert tap_help.diy_appropriate is True
     assert "Check whether other taps have water" in tap_help.reply
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 
 
 def test_emergency_chat_skips_ai_and_creates_urgent_agency_request(client, monkeypatch):
@@ -52,7 +55,10 @@ def test_emergency_chat_skips_ai_and_creates_urgent_agency_request(client, monke
     assert requests.status_code == 200
     assert len(requests.json()) == 1
     assert requests.json()[0]["tenant"] == "Nandi Dlamini"
+<<<<<<< HEAD
     assert requests.json()[0]["primary_issue"] == "I smell gas in the kitchen"
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 
 
 def test_other_agency_cannot_read_chat(client):
@@ -63,6 +69,7 @@ def test_other_agency_cannot_read_chat(client):
     other_landlord = auth(client, "other@test.com")
     response = client.get(f"/maintenance/conversations/{conversation_id}", headers=other_landlord)
     assert response.status_code == 404
+<<<<<<< HEAD
 
 
 def test_ai_outage_keeps_chat_open_and_allows_more_messages(client, monkeypatch):
@@ -271,3 +278,5 @@ def test_local_chat_uses_learned_category_for_unfamiliar_wording(monkeypatch):
 def test_negative_plumbing_followup_is_not_reversed():
     response=maintenance_chat.conversational_fallback('tenant: My kitchen tap has no water\ntenant: No other taps work')
     assert 'also have no water' in response.reply
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5

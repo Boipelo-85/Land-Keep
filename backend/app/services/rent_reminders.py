@@ -12,7 +12,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import models as m
+<<<<<<< HEAD
 from .money import cents_to_zar, zar_to_cents
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 
 TIMEZONE_NAME = os.getenv("LANDKEEP_REMINDER_TIMEZONE", "Africa/Johannesburg")
 REMINDER_WINDOWS = tuple(sorted({int(v.strip()) for v in os.getenv(
@@ -70,6 +73,7 @@ def find_unpaid_active_leases(db: Session, day: date) -> list[ReminderCandidate]
         charge = db.scalar(select(m.RentCharge).where(
             m.RentCharge.lease_id == lease.id, m.RentCharge.period == period
         ).order_by(m.RentCharge.id.desc()).limit(1))
+<<<<<<< HEAD
         paid_cents = 0
         if charge is not None:
             paid_cents = int(db.scalar(select(func.coalesce(func.sum(m.Payment.amount_cents), 0)).where(
@@ -77,6 +81,15 @@ def find_unpaid_active_leases(db: Session, day: date) -> list[ReminderCandidate]
             )) or 0)
         amount_due_cents = zar_to_cents(charge.amount_due if charge is not None else lease.monthly_rent)
         outstanding = float(cents_to_zar(max(0, amount_due_cents - paid_cents)))
+=======
+        paid = 0.0
+        if charge is not None:
+            paid = float(db.scalar(select(func.coalesce(func.sum(m.Payment.amount), 0.0)).where(
+                m.Payment.charge_id == charge.id
+            )) or 0)
+        amount_due = float(charge.amount_due if charge is not None else lease.monthly_rent)
+        outstanding = max(0.0, round(amount_due - paid, 2))
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
         if outstanding:
             due_date = charge.due_date if charge is not None else due_date_for_month(lease.due_day, period)
             if period <= lease.start_date <= month_end and due_date < lease.start_date:

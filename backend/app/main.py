@@ -14,7 +14,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models  # noqa: F401  (registers the tables)
 from .database import Base, SessionLocal, engine
+<<<<<<< HEAD
 from .routers import applications, auth, contractors, leases, maintenance, payments, reminders, units
+=======
+from .routers import applications, auth, leases, maintenance, reminders, units
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 from .services.agency_reminders import TIMEZONE_NAME, run_reminders
 from datetime import timedelta
 from sqlalchemy import select
@@ -91,12 +95,18 @@ app.add_middleware(
 Base.metadata.create_all(engine)
 
 app.include_router(auth.router)
+<<<<<<< HEAD
 app.include_router(contractors.router)
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 app.include_router(units.router)
 app.include_router(applications.router)
 app.include_router(leases.router)
 app.include_router(maintenance.router)
+<<<<<<< HEAD
 app.include_router(payments.router)
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 app.include_router(reminders.router)
 
 

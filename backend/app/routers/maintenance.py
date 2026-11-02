@@ -8,7 +8,10 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+<<<<<<< HEAD
 from starlette.concurrency import run_in_threadpool
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
@@ -18,7 +21,10 @@ from ..deps import get_current_user, require_landlord, require_tenant
 from ..schemas import MaintenanceOut
 from ..services.notifications import send_notification
 from ..services import maintenance_chat as chat
+<<<<<<< HEAD
 from ..services import maintenance_classifier as classifier
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 from ..services.maintenance_storage import NOTICE_VERSION, read_private_attachment, store_maintenance_photo
 from ..services.reminder_senders import build_sender, send_with_retries
 from ..security import SECRET
@@ -38,7 +44,11 @@ EXT_FALLBACK = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp
 
 def _conversation_access(db: Session, conversation_id: int, user: m.User) -> m.MaintenanceConversation:
     row = db.get(m.MaintenanceConversation, conversation_id)
+<<<<<<< HEAD
     if row is None or user.role not in {"tenant", "landlord"} or (user.role == "tenant" and row.tenant_id != user.id) or (user.role == "landlord" and row.agency_id != user.id):
+=======
+    if row is None or (user.role == "tenant" and row.tenant_id != user.id) or (user.role == "landlord" and row.agency_id != user.id):
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
         raise HTTPException(404, "Conversation not found")
     return row
 
@@ -69,6 +79,7 @@ def _create_request(db: Session, conversation: m.MaintenanceConversation, analys
     if existing:
         return existing
     messages = db.scalars(select(m.MaintenanceMessage).where(m.MaintenanceMessage.conversation_id == conversation.id).order_by(m.MaintenanceMessage.created_at)).all()
+<<<<<<< HEAD
     tenant_messages = [x for x in messages if x.role == "tenant"]
     primary_issue = tenant_messages[0].text if tenant_messages else analysis.summary
     issue_context = "\n".join(x.text for x in tenant_messages if not x.text.startswith("Did that solve it?"))
@@ -95,6 +106,20 @@ def _create_request(db: Session, conversation: m.MaintenanceConversation, analys
     conversation.status = "escalated"
     db.flush()
     db.add(m.MaintenanceMessage(conversation_id=conversation.id, role="bot", text=f"Your report reference is MR-{req.id:06d}. It is saved for your landlord to review.\n\nWhile you wait:\n{interim.reply}\n\nYou can keep chatting here. {chat.DISCLAIMER}"))
+=======
+    suggested = "\n".join(f"{x.role}: {x.text}" for x in messages if x.role == "bot")
+    tenant = db.get(m.User, conversation.tenant_id)
+    unit = db.get(m.Unit, conversation.unit_id)
+    prop = db.get(m.Property, unit.property_id)
+    req = m.MaintenanceRequest(unit_id=conversation.unit_id, tenant_id=conversation.tenant_id,
+        description=analysis.summary or "Maintenance issue reported through chat", status="open", source="chatbot",
+        ai_category=analysis.category, ai_urgency=analysis.urgency, ai_summary=analysis.summary,
+        ai_likely_cause=analysis.likely_cause, tried_self_help=(suggested + (f"\nTenant response: {answer}" if answer else "")), conversation_id=conversation.id)
+    db.add(req)
+    conversation.status = "escalated"
+    db.flush()
+    db.add(m.MaintenanceMessage(conversation_id=conversation.id, role="bot", text=f"Your report reference is MR-{req.id:06d}. Your landlord has been notified. {chat.DISCLAIMER}"))
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     db.flush()
     if analysis.urgency in {"high", "emergency"}:
         _notify_landlord(db, conversation, f"URGENT: Maintenance report MR-{req.id:06d}",
@@ -112,6 +137,7 @@ def _conversation_out(db: Session, row: m.MaintenanceConversation, user: m.User)
                     "attachments": [{"id": a.id, "content_type": a.content_type, "size": a.size,
                                      "url": f"/api/maintenance/attachments/{a.id}/link"} for a in attachments]})
     req = db.scalar(select(m.MaintenanceRequest).where(m.MaintenanceRequest.conversation_id == row.id))
+<<<<<<< HEAD
     return {"classification": classifier.request_classification(req) if req else None,
             "priority": classifier.effective_priority(req) if req else None,
             "id": row.id, "status": row.status, "agency_id": row.agency_id, "tenant_id": row.tenant_id,
@@ -119,6 +145,11 @@ def _conversation_out(db: Session, row: m.MaintenanceConversation, user: m.User)
             "photo_sharing_consent": row.photo_sharing_consent,
             "assistant_mode": "configured" if os.getenv("ANTHROPIC_API_KEY") else "local",
             "lease_id": row.lease_id, "is_tenant": user.role == "tenant"}
+=======
+    return {"id": row.id, "status": row.status, "agency_id": row.agency_id, "tenant_id": row.tenant_id,
+            "messages": out, "request_id": req.id if req else None,
+            "is_tenant": user.role == "tenant"}
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 
 
 def _attachment_token(attachment_id: int, expiry: int) -> str:
@@ -139,7 +170,10 @@ def _request_out(db: Session, req: m.MaintenanceRequest) -> dict:
     unit = db.get(m.Unit, req.unit_id)
     prop = db.get(m.Property, unit.property_id)
     return MaintenanceOut(
+<<<<<<< HEAD
         classification=classifier.request_classification(req),
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
         id=req.id,
         description=req.description,
         status=req.status,
@@ -182,7 +216,10 @@ async def report_problem(
         description=description,
         status="open",
     )
+<<<<<<< HEAD
     classifier.classify_request(req)
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     db.add(req)
     db.flush()
 
@@ -255,6 +292,7 @@ def start_conversation(body: dict, user: m.User = Depends(require_tenant), db: S
     return _conversation_out(db, row, user)
 
 
+<<<<<<< HEAD
 @router.post("/maintenance/conversations/{conversation_id}/photo-consent")
 def set_photo_consent(conversation_id: int, body: dict, user: m.User = Depends(require_tenant), db: Session = Depends(get_db)):
     row = _conversation_access(db, conversation_id, user)
@@ -268,11 +306,17 @@ def set_photo_consent(conversation_id: int, body: dict, user: m.User = Depends(r
     return _conversation_out(db, row, user)
 
 
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 @router.post("/maintenance/conversations/{conversation_id}/messages")
 async def conversation_message(conversation_id: int, text: str = Form(""), photos: list[UploadFile] = File(default=[]),
                               user: m.User = Depends(require_tenant), db: Session = Depends(get_db)):
     row = _conversation_access(db, conversation_id, user)
+<<<<<<< HEAD
     if row.status not in {"open", "escalated"}:
+=======
+    if row.status != "open":
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
         raise HTTPException(409, "This conversation is no longer open")
     text = text.strip()
     if len(text) > 2000 or (not text and not photos):
@@ -303,12 +347,16 @@ async def conversation_message(conversation_id: int, text: str = Form(""), photo
             raise HTTPException(400, str(exc)) from exc
         paths.append(stored.storage_path)
         db.add(m.MaintenanceAttachment(message_id=incoming.id, storage_path=stored.storage_path, content_type=stored.content_type, size=stored.size))
+<<<<<<< HEAD
     assistant_mode = "local"
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     trigger = chat.detect_emergency(text)
     landlord_requested = not trigger and chat.wants_landlord(text)
     incoming.flagged_emergency = bool(trigger)
     db.flush()
     try:
+<<<<<<< HEAD
         if row.status == "escalated" and trigger:
             req = db.scalar(select(m.MaintenanceRequest).where(m.MaintenanceRequest.conversation_id == row.id))
             if req:
@@ -347,11 +395,15 @@ async def conversation_message(conversation_id: int, text: str = Form(""), photo
                 assistant_mode = "local"
             db.add(m.MaintenanceMessage(conversation_id=row.id, role="bot", text=reply))
         elif trigger:
+=======
+        if trigger:
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
             result = chat.Analysis(reply=chat.emergency_reply(trigger), category="other", urgency="emergency", summary=f"Potential {trigger} emergency", likely_cause="Requires urgent human assessment", confidence=1, diy_appropriate=False)
             db.add(m.MaintenanceMessage(conversation_id=row.id, role="bot", text=result.reply, flagged_emergency=True))
             db.flush()
             _create_request(db, row, result)
         elif landlord_requested:
+<<<<<<< HEAD
             result = chat.Analysis(reply="Tenant requested landlord assistance.", category="other", urgency="medium", summary=text[:500] or "Tenant requested landlord assistance", likely_cause="Tenant requested human assistance", confidence=0, diy_appropriate=False)
             db.add(m.MaintenanceMessage(conversation_id=row.id, role="bot", text="I have saved this report for your landlord. " + (chat.conversational_fallback("tenant: " + text).reply if any(word in text.lower() for word in ("key", "locked out")) else "You can keep talking to me here—what else should I know?")))
             db.flush()
@@ -378,11 +430,30 @@ async def conversation_message(conversation_id: int, text: str = Form(""), photo
             db.add(m.MaintenanceMessage(conversation_id=row.id, role="bot", text=result.reply))
             db.flush()
             if needs_human_review or result.urgency in {"high", "emergency"} or (not result.diy_appropriate and result.confidence >= 0.7):
+=======
+            result = chat.Analysis(reply="", category="other", urgency="medium", summary=text[:500] or "Tenant requested landlord assistance", likely_cause="Tenant requested human assistance", confidence=1, diy_appropriate=False)
+            db.add(m.MaintenanceMessage(conversation_id=row.id, role="bot", text="I have sent this to your landlord for review."))
+            db.flush()
+            _create_request(db, row, result, "Tenant asked to report this during chat")
+        else:
+            try:
+                history = db.scalars(select(m.MaintenanceMessage).where(
+                    m.MaintenanceMessage.conversation_id == row.id).order_by(m.MaintenanceMessage.created_at.desc()).limit(8)).all()
+                transcript = "\n".join(f"{item.role}: {item.text}" for item in reversed(history))
+                result = chat.analyze_with_claude(transcript or text or "Please assess the attached maintenance photo.", paths)
+                result = chat.validate_analysis(result.model_dump())
+            except Exception:
+                result = chat.fallback_analysis()
+            db.add(m.MaintenanceMessage(conversation_id=row.id, role="bot", text=result.reply))
+            db.flush()
+            if result.category == "other" and result.confidence == 0:
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
                 _create_request(db, row, result)
         db.commit()
     except Exception:
         db.rollback()
         raise
+<<<<<<< HEAD
     output = _conversation_out(db, row, user)
     output["assistant_mode"] = assistant_mode
     return output
@@ -395,19 +466,27 @@ def my_chat_conversations(user: m.User = Depends(require_tenant), db: Session = 
         m.MaintenanceConversation.status.in_(["open", "escalated"]),
     ).order_by(m.MaintenanceConversation.created_at.desc()).limit(10)).all()
     return [_conversation_out(db, row, user) for row in rows]
+=======
+    return _conversation_out(db, row, user)
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 
 
 @router.post("/maintenance/conversations/{conversation_id}/resolve")
 def resolve_or_escalate(conversation_id: int, body: dict, user: m.User = Depends(require_tenant), db: Session = Depends(get_db)):
     row = _conversation_access(db, conversation_id, user)
+<<<<<<< HEAD
     if row.status not in {"open", "escalated"}:
         raise HTTPException(409, "This conversation is no longer open")
     solved = body.get("solved") is True
+=======
+    solved = bool(body.get("solved", False))
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     answer = "Yes, it solved the problem." if solved else str(body.get("answer") or "No or unsure")[:500]
     db.add(m.MaintenanceMessage(conversation_id=row.id, role="tenant", text=f"Did that solve it? {answer}"))
     if solved:
         row.status = "resolved_self_help"
         row.closed_at = m.utcnow()
+<<<<<<< HEAD
         req = db.scalar(select(m.MaintenanceRequest).where(m.MaintenanceRequest.conversation_id == row.id))
         if req:
             req.status = "resolved"
@@ -415,6 +494,11 @@ def resolve_or_escalate(conversation_id: int, body: dict, user: m.User = Depends
         db.add(m.MaintenanceMessage(conversation_id=row.id, role="bot", text=f"Glad it is resolved. This chat is closed. {chat.DISCLAIMER}"))
     else:
         result = chat.Analysis(reply="Tenant reports the issue remains unresolved.", category="other", urgency="medium", summary="Tenant reports maintenance problem remains unresolved", likely_cause="Needs landlord assessment", confidence=0, diy_appropriate=False)
+=======
+        db.add(m.MaintenanceMessage(conversation_id=row.id, role="bot", text=f"Glad it is resolved. This chat is closed. {chat.DISCLAIMER}"))
+    else:
+        result = chat.Analysis(reply="", category="other", urgency="medium", summary="Tenant reports maintenance problem remains unresolved", likely_cause="Needs landlord assessment", confidence=0, diy_appropriate=False)
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
         _create_request(db, row, result, answer)
     db.commit()
     return _conversation_out(db, row, user)
@@ -423,9 +507,13 @@ def resolve_or_escalate(conversation_id: int, body: dict, user: m.User = Depends
 @router.post("/maintenance/conversations/{conversation_id}/escalate")
 def escalate_conversation(conversation_id: int, user: m.User = Depends(require_tenant), db: Session = Depends(get_db)):
     row = _conversation_access(db, conversation_id, user)
+<<<<<<< HEAD
     if row.status not in {"open", "escalated"}:
         raise HTTPException(409, "This conversation is no longer open")
     result = chat.Analysis(reply="Tenant requested landlord assistance.", category="other", urgency="medium", summary="Tenant requested landlord assistance", likely_cause="Needs landlord assessment", confidence=0, diy_appropriate=False)
+=======
+    result = chat.Analysis(reply="", category="other", urgency="medium", summary="Tenant requested landlord assistance", likely_cause="Needs landlord assessment", confidence=0, diy_appropriate=False)
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     _create_request(db, row, result, "Tenant asked to report this to the landlord")
     db.commit()
     return _conversation_out(db, row, user)
@@ -487,6 +575,7 @@ def landlord_requests(urgency: str | None = None, status: str | None = None, cat
     for req in db.scalars(stmt).all():
         unit = db.get(m.Unit, req.unit_id); prop = db.get(m.Property, unit.property_id)
         conv = db.get(m.MaintenanceConversation, req.conversation_id) if req.conversation_id else None
+<<<<<<< HEAD
         first_tenant_message = db.scalar(select(m.MaintenanceMessage.text).where(
             m.MaintenanceMessage.conversation_id == req.conversation_id,
             m.MaintenanceMessage.role == "tenant").order_by(m.MaintenanceMessage.created_at).limit(1)) if req.conversation_id else None
@@ -499,6 +588,13 @@ def landlord_requests(urgency: str | None = None, status: str | None = None, cat
             "likely_cause": req.ai_likely_cause, "tried_self_help": req.tried_self_help,
             "created_at": req.created_at, "conversation": _conversation_out(db, conv, landlord) if conv else None})
     result.sort(key=lambda item: {"emergency": 0, "high": 1, "medium": 2, "low": 3}.get(item["effective_priority"], 2))
+=======
+        result.append({"id": req.id, "tenant_id": req.tenant_id, "tenant": db.get(m.User, req.tenant_id).full_name,
+            "unit": unit.unit_number, "property": prop.name, "description": req.description, "status": req.status,
+            "urgency": req.ai_urgency, "category": req.ai_category, "summary": req.ai_summary,
+            "likely_cause": req.ai_likely_cause, "tried_self_help": req.tried_self_help,
+            "created_at": req.created_at, "conversation": _conversation_out(db, conv, landlord) if conv else None})
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     return result
 
 
@@ -535,6 +631,7 @@ def update_request_status(request_id: int, body: dict, landlord: m.User = Depend
                 logging.getLogger(__name__).exception("Tenant maintenance status notification failed")
     db.commit()
     return {"id": req.id, "status": req.status}
+<<<<<<< HEAD
 
 
 @router.get("/maintenance/classifier/status")
@@ -559,3 +656,5 @@ def confirm_classification(request_id: int, body: dict,
     db.commit()
     return {'id': req.id, 'confirmed_category': req.confirmed_category,
             'classification': classifier.request_classification(req)}
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5

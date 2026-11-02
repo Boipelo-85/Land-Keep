@@ -3,9 +3,13 @@ from __future__ import annotations
 
 import base64
 import json
+<<<<<<< HEAD
 import logging
 import os
 import re
+=======
+import os
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +21,7 @@ from .. import models as m
 from ..database import BASE_DIR
 from .maintenance_storage import read_private_attachment
 
+<<<<<<< HEAD
 logger = logging.getLogger(__name__)
 
 PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "maintenance_chat_system.txt"
@@ -25,6 +30,10 @@ DISCLAIMER = "These suggestions are general guidance, not a professional inspect
 
 class AnalysisOutputError(ValueError):
     """Claude answered but its structured assessment could not be trusted."""
+=======
+PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "maintenance_chat_system.txt"
+DISCLAIMER = "These suggestions are general guidance, not a professional inspection."
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 TRIGGERS = {
     "gas smell": "gas", "smell of gas": "gas", "smell gas": "gas", "gas leak": "gas",
     "exposed wiring": "electrical", "live wire": "electrical", "sparking": "electrical",
@@ -56,6 +65,7 @@ def detect_emergency(text: str) -> str | None:
     return next((kind for phrase, kind in TRIGGERS.items() if phrase in normalized), None)
 
 
+<<<<<<< HEAD
 def normalize_message(text: str) -> str:
     text = text.lower().replace("’", "'")
     for wrong, right in {"cant": "can't", "cnt": "can't", "cannnot": "cannot", "mu": "my", "kyes": "keys", "keeys": "keys"}.items():
@@ -72,10 +82,14 @@ def key_issue(text: str) -> bool:
 def wants_landlord(text: str) -> bool:
     if key_issue(text):
         return True
+=======
+def wants_landlord(text: str) -> bool:
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     normalized = " ".join(text.lower().replace("’", "'").split())
     return any(phrase in normalized for phrase in (
         "report this", "report it", "tell my landlord", "contact my landlord",
         "i want the landlord", "speak to my landlord", "send this to my landlord",
+<<<<<<< HEAD
         "i want to report", "landlord please", "spare key", "need a key", "need keys",
         "locked out", "lost key", "lost keys", "lost my key",
     ))
@@ -127,6 +141,12 @@ def landlord_followup_reply(text: str) -> str:
     return f"I've added this update to your maintenance report for your landlord. {advice} {DISCLAIMER}"
 
 
+=======
+        "i want to report", "landlord please",
+    ))
+
+
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 def emergency_reply(kind: str) -> str:
     extra = {
         "gas": "Do not operate switches or flames. Leave the area and call local emergency services or the gas provider from outside.",
@@ -141,6 +161,7 @@ def emergency_reply(kind: str) -> str:
     return f"This may be an emergency. {extra} I have sent an urgent report to your landlord. {DISCLAIMER}"
 
 
+<<<<<<< HEAD
 def interim_assessment(text: str) -> Analysis:
     """Deterministic interim guidance; not a trained classifier or a diagnosis."""
     normalized = text.lower().replace("’", "'")
@@ -357,6 +378,17 @@ def analyze_with_claude(text: str, image_paths: list[str], *, escalated: bool = 
     """Call Claude with vision; no API key means safe human-review fallback."""
     if not os.getenv("ANTHROPIC_API_KEY"):
         logger.warning("AI analysis failed: API key not configured")
+=======
+def fallback_analysis() -> Analysis:
+    return Analysis(reply=f"I couldn't safely assess this just now, so I sent this to your landlord for human review. {DISCLAIMER}",
+                    category="other", urgency="medium", summary="Needs human review; AI analysis unavailable",
+                    likely_cause="Unknown", confidence=0, diy_appropriate=False)
+
+
+def analyze_with_claude(text: str, image_paths: list[str]) -> Analysis:
+    """Call Claude with vision; no API key means safe human-review fallback."""
+    if not os.getenv("ANTHROPIC_API_KEY"):
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
         raise RuntimeError("ANTHROPIC_API_KEY is not configured")
     import anthropic
 
@@ -377,6 +409,7 @@ def analyze_with_claude(text: str, image_paths: list[str], *, escalated: bool = 
         media = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}[suffix]
         content.append({"type": "image", "source": {"type": "base64", "media_type": media, "data": base64.b64encode(data).decode("ascii")}})
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"], timeout=float(os.getenv("MAINTENANCE_AI_TIMEOUT_SECONDS", "20")), max_retries=0)
+<<<<<<< HEAD
     system_prompt = PROMPT_PATH.read_text(encoding="utf-8")
     if escalated:
         system_prompt += (
@@ -389,12 +422,18 @@ def analyze_with_claude(text: str, image_paths: list[str], *, escalated: bool = 
     response = client.messages.create(
         model=os.getenv("MAINTENANCE_AI_MODEL", "claude-haiku-5-5"), max_tokens=1000,
         system=system_prompt,
+=======
+    response = client.messages.create(
+        model=os.getenv("MAINTENANCE_AI_MODEL", "claude-sonnet-5-5"), max_tokens=1000,
+        system=PROMPT_PATH.read_text(encoding="utf-8"),
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
         tools=[{"name": "maintenance_assessment", "description": "Return a validated maintenance assessment", "input_schema": schema}],
         tool_choice={"type": "tool", "name": "maintenance_assessment"},
         messages=[{"role": "user", "content": content}],
     )
     block = next((b for b in response.content if getattr(b, "type", None) == "tool_use"), None)
     if block is None:
+<<<<<<< HEAD
         logger.warning("AI analysis failed: Claude returned no structured assessment")
         raise AnalysisOutputError("Claude returned no structured assessment")
     try:
@@ -405,18 +444,31 @@ def analyze_with_claude(text: str, image_paths: list[str], *, escalated: bool = 
     if result.category not in m.CHAT_MAINTENANCE_CATEGORIES or result.urgency not in m.CHAT_MAINTENANCE_URGENCIES:
         logger.warning("AI analysis failed: Unsupported category or urgency")
         raise AnalysisOutputError("Claude returned unsupported category or urgency")
+=======
+        raise ValueError("Claude returned no structured assessment")
+    result = Analysis.model_validate(block.input)
+    if result.category not in m.CHAT_MAINTENANCE_CATEGORIES or result.urgency not in m.CHAT_MAINTENANCE_URGENCIES:
+        raise ValueError("Claude returned unsupported category or urgency")
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
     # Electrical and structural topics are always referred to a human.
     if result.category == "electrical" or any(w in text.lower() for w in ("gas", "structural", "crack in the wall")):
         result.diy_appropriate = False
         result.suggested_steps = []
         if result.category == "electrical":
             result.reply = "Electrical problems can be dangerous. Please do not touch wiring or electrical equipment. I recommend your landlord or a qualified electrician assess it."
+<<<<<<< HEAD
     result.reply = result.reply.strip()
     if DISCLAIMER.lower() not in result.reply.lower():
         result.reply = f"{result.reply} {DISCLAIMER}"
     if result.needs_follow_up and result.follow_up_question:
         result.reply += f"\n\n{result.follow_up_question}"
     elif result.diy_appropriate and not escalated:
+=======
+    result.reply = f"{result.reply.strip()} {DISCLAIMER}"
+    if result.needs_follow_up and result.follow_up_question:
+        result.reply += f"\n\n{result.follow_up_question}"
+    elif result.diy_appropriate:
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
         result.reply += "\n\nDid that solve it?"
     return result
 

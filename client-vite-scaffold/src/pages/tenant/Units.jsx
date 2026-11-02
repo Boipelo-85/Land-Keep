@@ -117,7 +117,10 @@ export default function Units() {
       <header className="page-head">
         <h1>Find a unit</h1>
         <p>Pick a unit and apply. You can follow your application from the moment you send it.</p>
+<<<<<<< HEAD
         <button type="button" className="btn btn-secondary" disabled={status === 'loading'} onClick={() => dispatch(fetchVacantUnits())}>Refresh listings</button>
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
       </header>
 
       {status === 'loading' && items.length === 0 && <Loading>Loading units</Loading>}
@@ -137,7 +140,11 @@ export default function Units() {
                 {u.address}, {u.city}
               </p>
             </div>
+<<<<<<< HEAD
             <span className="unit-beds">{u.bedrooms === 0 ? 'Studio' : `${u.bedrooms} bedroom${u.bedrooms === 1 ? '' : 's'}`}</span>
+=======
+            <span className="unit-beds">{u.bedrooms} bedroom{u.bedrooms > 1 ? 's' : ''}</span>
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
             <span className="unit-rent">
               {money(u.monthly_rent)} <small>per month</small>
             </span>
@@ -148,7 +155,11 @@ export default function Units() {
         ))}
       </ul>
 
+<<<<<<< HEAD
       <Modal isOpen={!!applyFor} onClose={() => setApplyFor(null)} title="Apply for this unit">
+=======
+      <Modal open={!!applyFor} onClose={() => setApplyFor(null)} title="Apply for this unit">
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
         {applyFor && <ApplyForm unit={applyFor} onClose={() => setApplyFor(null)} />}
       </Modal>
     </>

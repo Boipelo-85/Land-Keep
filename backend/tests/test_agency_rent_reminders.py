@@ -66,8 +66,13 @@ def test_unpaid_query_is_agency_scoped_and_skips_paid(client):
         db.add_all([partial_charge, paid_charge])
         db.flush()
         db.add_all([
+<<<<<<< HEAD
             m.Payment(charge_id=partial_charge.id, amount_cents=200000, paid_at=datetime(2024, 2, 10), method="eft"),
             m.Payment(charge_id=paid_charge.id, amount_cents=700000, paid_at=datetime(2024, 2, 10), method="eft"),
+=======
+            m.Payment(charge_id=partial_charge.id, amount=2000, paid_at=datetime(2024, 2, 10), method="eft"),
+            m.Payment(charge_id=paid_charge.id, amount=7000, paid_at=datetime(2024, 2, 10), method="eft"),
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
         ])
         db.commit()
 

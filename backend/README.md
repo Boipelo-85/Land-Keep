@@ -95,6 +95,7 @@ and channel, and live in a new table so prior SQLite data is left intact.
 
 ### The applicant-to-tenant flow
 
+<<<<<<< HEAD
 ### Tenant online rent payments
 
 Tenants can open **Pay rent** and start a PayFast hosted checkout for an
@@ -119,6 +120,8 @@ available for the tenant's device. After a confirmed sandbox transaction,
 switch to live merchant credentials and set `PAYFAST_SANDBOX=false`. Card
 details are entered on PayFast's secure hosted checkout, not stored by LandKeep.
 
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 | Step | Who | Endpoint |
 |---|---|---|
 | See vacant units | anyone | `GET /units/vacant` |
@@ -151,5 +154,9 @@ details are entered on PayFast's secure hosted checkout, not stored by LandKeep.
 
 1. Maintenance requests API (with photo upload) and rent status endpoints
 2. Rent reminder job (reuses the notification service)
+<<<<<<< HEAD
 3. Train/evaluate the included maintenance classifier on reviewed real-world data; see `../TRAINED-MODEL.md`
+=======
+3. ML classifier trained from `data/maintenance_requests.csv`
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 4. Analytics endpoints and the React screens

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # LandKeep — start here
 
 On Windows, extract the archive and double-click **START-LANDKEEP.cmd**. Read **START-HERE.txt** for setup, demo accounts, and retaining your existing database. The launcher starts and checks both services. First launch needs Python 3.12, Node.js 24 LTS, and an internet connection.
@@ -6,6 +7,8 @@ Use `landlord@landkeep.test` / `password123` for management features in a fresh 
 
 ---
 
+=======
+>>>>>>> 175b87823ea90111e1ba9f7dabef0492150ad0f5
 # LandKeep
 
 One place for a landlord to run the whole tenant journey: apply, credit check, approve, notify, lease, rent, maintenance, analytics.
