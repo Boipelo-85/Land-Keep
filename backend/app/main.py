@@ -14,18 +14,29 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models  # noqa: F401  (registers the tables)
 from .database import Base, SessionLocal, engine
-from .routers import applications, auth, contractors, leases, maintenance, payments, reminders, units
-from .services.agency_reminders import TIMEZONE_NAME, run_reminders
+from .routers import applications, auth, contractors, leases, maintenance, payments, paystack, reminders, units
+from .services.agency_reminders import TIMEZONE_NAME, local_today, run_reminders
+from .services.leases import generate_recurring_charges
 from datetime import timedelta
 from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
 
+def scheduled_rent_charges() -> None:
+    try:
+        with SessionLocal() as db:
+            count = generate_recurring_charges(db, local_today())
+        logger.info("Generated %s missing rent charges", count)
+    except Exception:
+        logger.exception("Recurring rent charge generation failed")
+
+
 def scheduled_rent_reminders() -> None:
     """Run the daily reminder evaluation with its own database session."""
     try:
         with SessionLocal() as db:
+            generate_recurring_charges(db, local_today())
             result = run_reminders(db)
         logger.info("Month-end rent reminder job completed: %s", result["summary"])
     except Exception:
@@ -62,6 +73,7 @@ async def lifespan(_app: FastAPI):
     from starlette.concurrency import run_in_threadpool
     from .services.tenant_complaints import predict_reply
     await run_in_threadpool(predict_reply, "The kitchen sink will not drain")
+    await run_in_threadpool(scheduled_rent_charges)
     send_time = os.getenv("LANDKEEP_REMINDER_SEND_TIME", "08:00")
     hour, minute = (int(value) for value in send_time.split(":", 1))
     scheduler = BackgroundScheduler(timezone=TIMEZONE_NAME)
@@ -76,6 +88,8 @@ async def lifespan(_app: FastAPI):
     scheduler.add_job(scheduled_maintenance_escalations, "interval",
         minutes=max(5, int(os.getenv("MAINTENANCE_ESCALATION_CHECK_MINUTES", "30"))),
         id="maintenance_urgent_escalations", replace_existing=True, coalesce=True, max_instances=1)
+    scheduler.add_job(scheduled_rent_charges, "interval", hours=1,
+        id="recurring_rent_charges", replace_existing=True, coalesce=True, max_instances=1)
     scheduler.start()
     try:
         yield
@@ -101,6 +115,7 @@ app.include_router(applications.router)
 app.include_router(leases.router)
 app.include_router(maintenance.router)
 app.include_router(payments.router)
+app.include_router(paystack.router)
 app.include_router(reminders.router)
 
 

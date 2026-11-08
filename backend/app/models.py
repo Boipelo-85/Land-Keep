@@ -12,7 +12,7 @@ Design rules:
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import Index, func, Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import Index, func, Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -175,6 +175,7 @@ class Lease(Base):
 
 class RentCharge(Base):
     __tablename__ = "rent_charges"
+    __table_args__ = (UniqueConstraint("lease_id", "period", name="uq_rent_charge_lease_period"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     lease_id: Mapped[int] = mapped_column(ForeignKey("leases.id"), index=True)
@@ -205,6 +206,9 @@ class PaymentAttempt(Base):
     """A tenant-initiated provider checkout; only a verified notification settles it."""
 
     __tablename__ = "payment_attempts"
+    __table_args__ = (Index("uq_paystack_open_charge", "rent_record_id", unique=True,
+        sqlite_where=text("provider = 'paystack' AND status IN ('initiated', 'pending')"),
+        postgresql_where=text("provider = 'paystack' AND status IN ('initiated', 'pending')")),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     agency_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
@@ -221,6 +225,7 @@ class PaymentAttempt(Base):
     # installations can migrate without discarding their audit history.
     payment_reference: Mapped[str] = mapped_column(String(80), unique=True)
     charge_id: Mapped[int] = mapped_column(ForeignKey("rent_charges.id"), index=True)
+    checkout_url: Mapped[Optional[str]] = mapped_column(Text)
     recipient_merchant_id: Mapped[str] = mapped_column(String(8))
     provider_transaction_id: Mapped[Optional[str]] = mapped_column(String(100))
     paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
@@ -479,3 +484,12 @@ class MaintenanceWorkOrder(Base):
     scheduled_for: Mapped[Optional[date]] = mapped_column(Date)
     notes: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class PaystackSettings(Base):
+    """Per-landlord opt-in; all receipts settle to the platform Paystack account."""
+    __tablename__ = "paystack_settings"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agency_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+    payments_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)

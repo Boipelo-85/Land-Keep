@@ -1,7 +1,7 @@
 """Password hashing and signed login tokens, using only the standard library.
 
-Tokens are "<user_id>.<expiry>.<hmac>". Good enough for a prototype; use JWT
-(with a real secret from the environment) in production.
+Tokens are "<user_id>.<expiry>.<hmac>". A private signing secret from the
+environment or backend/.env is required; there is no shared default key.
 """
 import hashlib
 import hmac
@@ -10,7 +10,13 @@ import time
 from typing import Optional
 
 ITERATIONS = 120_000
-SECRET = os.getenv("LANDKEEP_SECRET", "dev-secret-change-me")
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+SECRET = os.getenv("LANDKEEP_SECRET", "")
+if len(SECRET) < 32 or SECRET == "dev-secret-change-me":
+    raise RuntimeError("Set LANDKEEP_SECRET to a random secret of at least 32 characters in backend/.env.")
 TOKEN_TTL_SECONDS = 8 * 3600
 
 

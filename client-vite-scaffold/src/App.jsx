@@ -16,6 +16,7 @@ import LandlordApplications from './pages/landlord/LandlordApplications'
 import LandlordMaintenance from './pages/landlord/LandlordMaintenance'
 import PayRent from './pages/tenant/PayRent'
 import LandlordPaymentSettings from './pages/landlord/LandlordPaymentSettings'
+import LandlordPayments from './pages/landlord/LandlordPayments'
 
 function Home() {
   const user = useSelector((s) => s.auth.user)
@@ -61,7 +62,8 @@ export default function App() {
             <Route path="landlord/units" element={<LandlordUnits />} />
             <Route path="landlord/applications/:id?" element={<LandlordApplications />} />
             <Route path="landlord/maintenance" element={<LandlordMaintenance />} />
-            <Route path="landlord/payments" element={<LandlordPaymentSettings />} />
+            <Route path="landlord/payments" element={<LandlordPayments />} />
+            <Route path="landlord/payments/payfast" element={<LandlordPaymentSettings />} />
           </Route>
         </Route>
       </Route>

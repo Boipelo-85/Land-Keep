@@ -5,7 +5,7 @@ import { logout } from '../store/authSlice'
 import { fetchMyLeases, selectHasActiveLease } from '../store/leasesSlice'
 
 const LINKS = {
-  landlord: [{ to: '/landlord/units', label: 'My units' }, { to: '/landlord/applications', label: 'Applications' }, { to: '/landlord/maintenance', label: 'Maintenance' }, { to: '/landlord/contractors', label: 'Contractors' }, { to: '/landlord/payments', label: 'Payment setup' }],
+  landlord: [{ to: '/landlord/units', label: 'My units' }, { to: '/landlord/applications', label: 'Applications' }, { to: '/landlord/maintenance', label: 'Maintenance' }, { to: '/landlord/contractors', label: 'Contractors' }, { to: '/landlord/payments', label: 'Payments' }],
   tenant: [
     { to: '/units', label: 'Find a unit' },
     { to: '/applications', label: 'My applications' },
@@ -17,7 +17,7 @@ const LINKS = {
 
 // Parts of the platform that are designed for but not built yet.
 const COMING = {
-  landlord: ['Rent', 'Insights'],
+  landlord: ['Insights'],
   tenant: [],
 }
 

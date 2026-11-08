@@ -81,6 +81,7 @@ def main():
     if subprocess.run([str(a) for a in check_complaints], cwd=BACKEND).returncode != 0:
         print('Training local tenant complaint model...', flush=True)
         run([python, 'train_tenant_complaints.py'], cwd=BACKEND)
+    run([python, 'ensure_secret.py'], cwd=BACKEND)
     print('Preparing database (existing records are retained)...', flush=True)
     run([python, '-m', 'alembic', 'upgrade', 'head'], cwd=BACKEND)
     run([python, 'initialize_demo.py'], cwd=BACKEND)

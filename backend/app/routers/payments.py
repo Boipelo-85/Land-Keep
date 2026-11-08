@@ -204,6 +204,9 @@ def _balance(db: Session, charge: m.RentCharge) -> Decimal:
 
 
 def payment_readiness(db: Session, landlord_id: int) -> dict:
+    if os.getenv("PAYMENT_PROVIDER", "payfast").lower() == "paystack":
+        from .paystack import readiness
+        return readiness(db, landlord_id)
     try:
         mode = get_payment_provider("payfast").mode
     except PaymentProviderError:
@@ -239,13 +242,16 @@ def my_rent_charges(user: m.User = Depends(require_tenant), db: Session = Depend
                           .order_by(m.PaymentAttempt.created_at.desc()).limit(20)).all()
     return {"charges": charges, "attempts": [
         {"reference": a.our_reference, "charge_id": a.rent_record_id,
-         "amount": float(cents_to_zar(a.amount_cents)), "status": a.status,
+         "amount": float(cents_to_zar(a.amount_cents)), "status": a.status, "provider": a.provider,
          "created_at": a.created_at, "paid_at": a.completed_at} for a in attempts
     ]}
 
 
 @router.post("/{charge_id}/checkout")
 def create_checkout(charge_id: int, user: m.User = Depends(require_tenant), db: Session = Depends(get_db)):
+    if os.getenv("PAYMENT_PROVIDER", "payfast").lower() == "paystack":
+        from .paystack import checkout
+        return checkout(db, charge_id, user)
     merchant_id, merchant_key, passphrase, host = _config()
     row = db.execute(select(m.RentCharge, m.Lease).join(m.Lease, m.Lease.id == m.RentCharge.lease_id)
                      .where(m.RentCharge.id == charge_id, m.Lease.tenant_id == user.id,

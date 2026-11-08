@@ -7,3 +7,50 @@ INFO:     127.0.0.1:53619 - "GET /leases/mine HTTP/1.1" 200 OK
 INFO:     127.0.0.1:53620 - "GET /leases/mine HTTP/1.1" 200 OK
 INFO:     127.0.0.1:53621 - "GET /leases/mine HTTP/1.1" 200 OK
 INFO:     127.0.0.1:53622 - "GET /leases/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65127 - "GET /leases/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65126 - "GET /applications/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65129 - "GET /leases/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65130 - "GET /applications/mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61119 - "GET /leases/mine HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61120 - "GET /leases/mine HTTP/1.1" 401 Unauthorized
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER SMS -> +27715550100] Unacknowledged high maintenance report MR-000401: This urgent report for Thabo Mokoena is still open: My pump cant get take out water hey.. Please review it in LandKeep.
+[RENT REMINDER EMAIL -> landlord@landkeep.test] Unacknowledged high maintenance report MR-000402: This urgent report for Thabo Mokoena is still open: My unit keys hey.. Please review it in LandKeep.

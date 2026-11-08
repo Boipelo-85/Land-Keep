@@ -2,3 +2,6 @@ INFO:     Started server process [59652]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+Run time of job "scheduled_maintenance_escalations (trigger: interval[0:30:00], next run at: 2026-11-02 11:47:13 SAST)" was missed by 0:07:58.696150
+Run time of job "scheduled_maintenance_escalations (trigger: interval[0:30:00], next run at: 2026-11-02 13:47:13 SAST)" was missed by 0:05:05.325890
+Run time of job "scheduled_maintenance_escalations (trigger: interval[0:30:00], next run at: 2026-11-02 19:47:13 SAST)" was missed by 0:29:55.832528

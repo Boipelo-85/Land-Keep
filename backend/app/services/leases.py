@@ -1,4 +1,5 @@
 """Lease helpers: date maths, PDF generation and rent charge creation."""
+from calendar import monthrange
 from datetime import date
 from pathlib import Path
 
@@ -7,6 +8,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import models as m
@@ -17,7 +19,9 @@ LEASE_DIR = BASE_DIR / "storage" / "leases"
 
 def add_months(d: date, n: int) -> date:
     idx = d.year * 12 + (d.month - 1) + n
-    return date(idx // 12, idx % 12 + 1, 1)
+    year, month = divmod(idx, 12)
+    month += 1
+    return date(year, month, min(d.day, monthrange(year, month)[1]))
 
 
 def money(x: float) -> str:
@@ -84,10 +88,24 @@ def generate_charges(db: Session, lease: m.Lease, upto: date) -> int:
     """Create monthly rent charges from the lease start up to `upto` (at least the first month)."""
     period = lease.start_date.replace(day=1)
     last = max(upto.replace(day=1), period)
+    # Lock the lease so concurrent workers cannot create the same month's charge.
+    db.execute(select(m.Lease).where(m.Lease.id == lease.id).with_for_update())
+    existing = set(db.scalars(select(m.RentCharge.period).where(m.RentCharge.lease_id == lease.id)))
+    existing.update(row.period for row in db.new if isinstance(row, m.RentCharge) and row.lease_id == lease.id)
     count = 0
     while period <= last and period <= lease.end_date:
-        db.add(m.RentCharge(lease_id=lease.id, period=period, amount_due=lease.monthly_rent,
-                            due_date=date(period.year, period.month, lease.due_day)))
+        if period not in existing:
+            db.add(m.RentCharge(lease_id=lease.id, period=period, amount_due=lease.monthly_rent,
+                                due_date=max(lease.start_date, date(period.year, period.month, lease.due_day))))
+            count += 1
         period = add_months(period, 1)
-        count += 1
+    return count
+
+
+def generate_recurring_charges(db: Session, upto: date) -> int:
+    """Catch up missing months for active leases, including downtime, without duplicates."""
+    count = 0
+    for lease in db.scalars(select(m.Lease).where(m.Lease.status == "active", m.Lease.start_date <= upto)):
+        count += generate_charges(db, lease, upto)
+    db.commit()
     return count

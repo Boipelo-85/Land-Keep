@@ -1,10 +1,8 @@
-"""One place to send every email and SMS.
+"""Application and lease notifications via configured SMTP/Twilio or explicit demo delivery."""
+import logging
 
-Every message is saved in the Notification table and delivered through
-`_deliver`. Today `_deliver` prints to the console (perfect for a demo). To go live,
-swap its body for SMTP or Twilio. WhatsApp later is just another channel here.
-"""
 from sqlalchemy.orm import Session
+from .reminder_senders import ConsoleSender, build_sender, send_with_retries
 
 from .. import models as m
 
@@ -45,10 +43,15 @@ TEMPLATES = {
 
 
 def _deliver(channel: str, user: m.User, subject: str, body: str) -> str:
-    """Stand-in delivery: print to the console. Replace with SMTP / Twilio later."""
+    """Use configured providers; distinguish demo output from provider delivery."""
     target = user.email if channel == "email" else user.phone
-    print(f"[{channel.upper()} -> {target}] {subject}: {body}")
-    return "sent"
+    try:
+        sender = build_sender(channel)
+        send_with_retries(sender, target, subject, body)
+        return "simulated" if isinstance(sender, ConsoleSender) else "sent"
+    except Exception:
+        logging.getLogger(__name__).exception("Notification delivery failed for user %s", user.id)
+        return "failed"
 
 
 def send_notification(db: Session, user: m.User, template: str,

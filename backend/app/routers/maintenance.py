@@ -75,12 +75,14 @@ def _notify_landlord(db: Session, conversation: m.MaintenanceConversation, subje
         # Console sender still records an actionable notification when no contact is configured.
         if not recipient and os.getenv("LANDKEEP_REMINDER_CONSOLE", "true").lower() not in {"1", "true", "yes"}:
             continue
+        delivered = False
         try:
             send_with_retries(build_sender(channel), recipient or f"agency:{conversation.agency_id}", subject, body)
+            delivered = True
         except Exception:
             import logging
             logging.getLogger(__name__).exception("Maintenance notification failed for agency %s", conversation.agency_id)
-        if settings and settings.channel_strategy == "fallback":
+        if delivered and settings and settings.channel_strategy == "fallback":
             break
 
 

@@ -8,6 +8,10 @@ _tmp = tempfile.mkdtemp()
 os.environ["LANDKEEP_DATABASE_URL"] = f"sqlite:///{Path(_tmp) / 'test.db'}"
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+os.environ["LANDKEEP_SECRET"] = "test-only-secret-" * 4
+os.environ["LANDKEEP_REMINDER_CONSOLE"] = "true"
+os.environ["PAYMENT_PROVIDER"] = "payfast"
+
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
