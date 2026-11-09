@@ -16,9 +16,12 @@ from .. import models as m
 from ..phone_numbers import normalize_sa_phone
 from .money import cents_to_zar, zar_to_cents
 from .reminder_senders import Sender, build_sender, send_with_retries
+from ..security import is_fixture_account
+from .automation_channels import channel_mode, deliver
 
 TIMEZONE_NAME = os.getenv("LANDKEEP_REMINDER_TIMEZONE", "Africa/Johannesburg")
 ALLOWED_CHANNELS = ("whatsapp", "sms", "email")
+LEASE_OFFSETS = (7, 3, 1, 0, -1, -3, -7)
 
 
 def days_until_month_end(day: date) -> int:
@@ -224,6 +227,9 @@ def _write_log(db: Session, candidate: Candidate, window: int, channel: str,
         sent_at=datetime.now(timezone.utc).replace(tzinfo=None) if status == "sent" else None,
     )
     db.add(row)
+    db.add(m.AutomationMessage(agency_id=candidate.agency.id, tenant_id=candidate.tenant.id,
+        channel=channel, kind="rent_reminder", direction="outbound", mode=channel_mode(channel),
+        subject="Rent reminder", body="", status=status, error=error or skip_reason))
     try:
         db.commit()
     except IntegrityError:
@@ -281,22 +287,30 @@ def _eligible_windows(day: date, config: AgencyConfig, window_override: int | No
 
 def _run_agency(db: Session, agency: m.User, day: date, dry_run: bool,
                 window_override: int | None,
-                sender_factory: Callable[[str], Sender]) -> list[dict]:
+                sender_factory: Callable[[str], Sender], lease_schedule: bool) -> list[dict]:
     config = _config(db, agency)
-    windows = _eligible_windows(day, config, window_override, dry_run)
+    windows = (LEASE_OFFSETS if config.reminders_enabled else ()) if lease_schedule else (
+        _eligible_windows(day, config, window_override, dry_run))
     if not windows:
         return []
 
-    candidates = find_unpaid_active_leases(db, day, agency_id=agency.id)
-    grouped: dict[int, list[Candidate]] = {}
-    for candidate in candidates:
-        grouped.setdefault(candidate.tenant.id, []).append(candidate)
+    if not lease_schedule:
+        candidates = find_unpaid_active_leases(db, day, agency_id=agency.id)
 
     outputs: list[dict] = []
-    days_remaining = days_until_month_end(day)
     for window in windows:
+        days_remaining = window if lease_schedule else days_until_month_end(day)
+        if lease_schedule:
+            due = day + timedelta(days=window)
+            candidates = [item for item in find_unpaid_active_leases(db, due, agency_id=agency.id)
+                          if item.due_date == due]
+        grouped: dict[int, list[Candidate]] = {}
+        for candidate in candidates:
+            grouped.setdefault(candidate.tenant.id, []).append(candidate)
         for tenant_candidates in grouped.values():
             tenant = tenant_candidates[0].tenant
+            if is_fixture_account(tenant.email):
+                continue
             consent = _tenant_consents(db, tenant)
             selected = [channel for channel in config.channel_order
                         if channel in config.enabled_channels and consent[channel]]
@@ -344,6 +358,17 @@ def _run_agency(db: Session, agency: m.User, day: date, dry_run: bool,
                     continue
 
                 subject, body, variables = render_message(channel, outstanding, days_remaining, config)
+                if lease_schedule:
+                    duration = f"{abs(window)} {'day' if abs(window) == 1 else 'days'}"
+                    timing = "today" if window == 0 else f"in {duration}" if window > 0 else f"{duration} ago"
+                    due = "is due" if window >= 0 else "was due"
+                    details = "; ".join(
+                        f"R {item.amount_outstanding:,.2f} for {item.unit.unit_number} at {item.property.name}"
+                        for item in outstanding)
+                    body = f"Hi {tenant.full_name}, your rent of {details} {due} {timing} ({outstanding[0].due_date:%d %B %Y})."
+                    if channel in {"sms", "whatsapp"}:
+                        body += " Reply STOP to opt out."
+                    variables = {"1": body}
                 if dry_run:
                     channel_results.append({"channel": channel, "status": "would_send", "to": contact,
                                             "subject": subject, "message": body,
@@ -364,18 +389,29 @@ def _run_agency(db: Session, agency: m.User, day: date, dry_run: bool,
                         successful_before = True
                     continue
                 try:
-                    sender = sender_factory(channel)
-                    result = send_with_retries(sender, contact, subject, body,
-                                               template_variables=variables)
+                    if sender_factory is build_sender:
+                        note = deliver(db, agency.id, tenant, "rent_reminder", channel, contact, subject, body,
+                                       template_variables=variables)
+                        provider_id = note.provider_message_id
+                        if note.status == "failed":
+                            for row in reserved:
+                                row.status, row.error = "failed", note.error
+                            db.commit()
+                            channel_results.append({"channel": channel, "status": "failed", "error": note.error})
+                            continue
+                    else:
+                        result = send_with_retries(sender_factory(channel), contact, subject, body,
+                                                   template_variables=variables)
+                        provider_id = result.provider_message_id
                     sent_at = datetime.now(timezone.utc).replace(tzinfo=None)
                     for row in reserved:
                         row.status = "sent"
                         row.error = None
-                        row.provider_message_id = result.provider_message_id
+                        row.provider_message_id = provider_id
                         row.sent_at = sent_at
                     db.commit()
                     channel_results.append({"channel": channel, "status": "sent",
-                                            "provider_message_id": result.provider_message_id,
+                                            "provider_message_id": provider_id,
                                             "lease_ids": [item.lease.id for item in outstanding],
                                             "amount_outstanding": round(sum(
                                                 item.amount_outstanding for item in outstanding), 2)})
@@ -418,6 +454,7 @@ def _tenant_output(agency: m.User, candidates: list[Candidate], window: int,
 def run_reminders(db: Session, *, agency_id: int | None = None, day: date | None = None,
                   dry_run: bool = False,
                   window_days: int | None = None,
+                  lease_schedule: bool = False,
                   sender_factory: Callable[[str], Sender] = build_sender) -> dict:
     day = day or local_today()
     if agency_id is None:
@@ -434,10 +471,10 @@ def run_reminders(db: Session, *, agency_id: int | None = None, day: date | None
     agencies_processed = 0
     for agency_key in active_agencies:
         agency = db.get(m.User, agency_key)
-        if agency is None or agency.role != "landlord":
+        if agency is None or agency.role != "landlord" or is_fixture_account(agency.email):
             continue
         try:
-            reminders.extend(_run_agency(db, agency, day, dry_run, window_days, sender_factory))
+            reminders.extend(_run_agency(db, agency, day, dry_run, window_days, sender_factory, lease_schedule))
             if _config(db, agency).reminders_enabled:
                 agencies_processed += 1
         except Exception as exc:

@@ -54,6 +54,7 @@ export default function Layout() {
               <small>soon</small>
             </span>
           ))}
+          {user.role === 'landlord' && <NavLink to="/landlord/automation" className="nav-link">Notifications</NavLink>}
         </nav>
 
         <div className="who">

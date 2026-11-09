@@ -20,6 +20,11 @@ if len(SECRET) < 32 or SECRET == "dev-secret-change-me":
 TOKEN_TTL_SECONDS = 8 * 3600
 
 
+def is_fixture_account(email: str) -> bool:
+    """Keep previously seeded shared-password accounts out of the live app."""
+    return email.casefold().endswith("@landkeep.test")
+
+
 def hash_password(password: str) -> str:
     salt = os.urandom(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, ITERATIONS)

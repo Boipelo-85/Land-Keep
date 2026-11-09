@@ -14,9 +14,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models  # noqa: F401  (registers the tables)
 from .database import Base, SessionLocal, engine
-from .routers import applications, auth, contractors, leases, maintenance, payments, paystack, reminders, units
+from .routers import applications, auth, automation, contractors, leases, maintenance, payments, paystack, reminders, units
 from .services.agency_reminders import TIMEZONE_NAME, local_today, run_reminders
 from .services.leases import generate_recurring_charges
+from .services.automation import run_followups
+from .services.automation_channels import channel_mode
+from .security import is_fixture_account
 from datetime import timedelta
 from sqlalchemy import select
 
@@ -37,10 +40,19 @@ def scheduled_rent_reminders() -> None:
     try:
         with SessionLocal() as db:
             generate_recurring_charges(db, local_today())
-            result = run_reminders(db)
-        logger.info("Month-end rent reminder job completed: %s", result["summary"])
+            result = run_reminders(db, lease_schedule=os.getenv("LANDKEEP_LEASE_REMINDERS", "").lower() == "true")
+        logger.info("Rent reminder job completed: %s", result["summary"])
     except Exception:
-        logger.exception("Month-end rent reminder job failed")
+        logger.exception("Rent reminder job failed")
+
+
+def scheduled_repair_followups() -> None:
+    try:
+        with SessionLocal() as db:
+            count = run_followups(db, models.utcnow())
+        logger.info("Sent %s WhatsApp repair follow-ups", count)
+    except Exception:
+        logger.exception("Repair follow-up job failed")
 
 
 def scheduled_maintenance_escalations() -> None:
@@ -59,6 +71,8 @@ def scheduled_maintenance_escalations() -> None:
                 if conv is None:
                     continue
                 agency = db.get(models.User, conv.agency_id)
+                if not agency or is_fixture_account(agency.email):
+                    continue
                 from .routers.maintenance import _notify_landlord
                 _notify_landlord(db, conv, f"Unacknowledged {req.ai_urgency} maintenance report MR-{req.id:06d}",
                     f"This urgent report for {agency.full_name} is still open: {req.ai_summary}. Please review it in LandKeep.", True)
@@ -90,6 +104,9 @@ async def lifespan(_app: FastAPI):
         id="maintenance_urgent_escalations", replace_existing=True, coalesce=True, max_instances=1)
     scheduler.add_job(scheduled_rent_charges, "interval", hours=1,
         id="recurring_rent_charges", replace_existing=True, coalesce=True, max_instances=1)
+    if channel_mode("whatsapp") == "real" and os.getenv("LANDKEEP_REPAIR_FOLLOWUPS", "").lower() == "true":
+        scheduler.add_job(scheduled_repair_followups, "interval", hours=1,
+            id="repair_followups", replace_existing=True, coalesce=True, max_instances=1)
     scheduler.start()
     try:
         yield
@@ -109,6 +126,7 @@ app.add_middleware(
 Base.metadata.create_all(engine)
 
 app.include_router(auth.router)
+app.include_router(automation.router)
 app.include_router(contractors.router)
 app.include_router(units.router)
 app.include_router(applications.router)

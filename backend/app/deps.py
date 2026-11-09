@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from . import models as m
 from .database import get_db
-from .security import decode_token
+from .security import decode_token, is_fixture_account
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -20,7 +20,7 @@ def get_current_user(
         raise HTTPException(401, "Not authenticated")
     user_id = decode_token(creds.credentials)
     user = db.get(m.User, user_id) if user_id else None
-    if user is None:
+    if user is None or is_fixture_account(user.email):
         raise HTTPException(401, "Invalid or expired token")
     return user
 

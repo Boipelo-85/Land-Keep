@@ -463,6 +463,31 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+
+class AutomationMessage(Base):
+    __tablename__ = "automation_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agency_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    request_id: Mapped[Optional[int]] = mapped_column(ForeignKey("maintenance_requests.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(40))
+    channel: Mapped[str] = mapped_column(String(20))
+    direction: Mapped[str] = mapped_column(String(10))
+    mode: Mapped[str] = mapped_column(String(20))
+    subject: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20))
+    error: Mapped[Optional[str]] = mapped_column(String(300))
+    dedupe_key: Mapped[Optional[str]] = mapped_column(String(180), unique=True)
+    provider_message_id: Mapped[Optional[str]] = mapped_column(String(200), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    read_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    answered_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+
 class Contractor(Base):
     __tablename__ = 'contractors'
     id: Mapped[int] = mapped_column(primary_key=True)

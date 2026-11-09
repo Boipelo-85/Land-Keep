@@ -12,28 +12,23 @@ This uses a new .landkeep-runtime environment so a damaged old .venv is not reus
 If startup fails, the window stays open with the error. Server logs are in logs/.
 Close old frontend/backend terminals before starting this launcher.
 
-DEMO ACCOUNTS (created only if the database has no users)
-Landlord: landlord@landkeep.test
-Tenant: tenant@landkeep.test
-Applicant: applicant@landkeep.test
-Password: password123
-
-The existing application has landlord and tenant roles. There is no built-in
-admin@grandrest.com account. Use the landlord demo for management features.
+FIRST LANDLORD ACCOUNT
+Follow AUTOMATION.md to create the first landlord account in the configured database.
+Tenants can register through the app.
 
 CHATBOT
-Open maintenance help as the demo tenant with an active lease.
-Local guidance works without an AI key. For live Claude conversation, create
-backend/.env from backend/.env.example and enter your own ANTHROPIC_API_KEY.
-Set MAINTENANCE_AI_MODEL to a model available to your account, then restart.
+Open maintenance help as a tenant with an active lease.
+Local guidance works without an AI key. For live Gemini conversation, create
+backend/.env from backend/.env.example and enter your own GEMINI_API_KEY.
+Set GEMINI_MODEL to a model available to your account, then restart.
 Never put API keys in frontend files.
 
 EXISTING DATA
 To retain your current data when moving to this extracted copy, stop old servers,
 back up and copy backend/landkeep.db, backend/.env, and backend/storage into this
 copy's backend folder. If using an external database, keep its configuration.
-The launcher applies migrations and skips demo seeding when users already exist.
-Do not run seed.py yourself against data you want to retain; it resets demo data.
+The launcher applies migrations and preserves existing records. For live use,
+start with a clean database or migrate only verified records.
 
 AFTER REPORTING
 The chatbot immediately adds problem-specific "While you wait" guidance to the
@@ -45,11 +40,11 @@ TRAINED MODEL
 An actual fitted local maintenance classifier is bundled. It labels NEW reports
 as plumbing, electrical, security, or general repairs. The landlord sees its
 suggestion and can confirm/correct it. This classification does not require an
-Anthropic key. It is trained on 400 synthetic demo examples; see TRAINED-MODEL.md
+Gemini key. It is trained on 400 synthetic examples; see TRAINED-MODEL.md
 for evaluation, limitations, retraining and file locations.
 
 This text classifier does not generate chatbot replies. Existing local guidance
-and optional Claude chat remain available, including advice after reporting.
+and optional Gemini chat remain available, including advice after reporting.
 Late-payment prediction and recurring-issue detection are not implemented.
 
 FIND / ADD UNITS

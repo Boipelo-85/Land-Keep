@@ -29,7 +29,7 @@ class ConsoleSender:
 
     def send(self, recipient: str, subject: str, message: str,
              *, template_variables: dict[str, str] | None = None) -> DeliveryResult:
-        print(f"[RENT REMINDER {self.channel.upper()} -> {recipient}] {subject}: {message}")
+        print(f"[LANDKEEP] Logged {self.channel} notification")
         return DeliveryResult()
 
 
@@ -129,7 +129,12 @@ def send_with_retries(sender: Sender, recipient: str, subject: str, message: str
 
 
 def build_sender(channel: str) -> Sender:
-    if os.getenv("LANDKEEP_REMINDER_CONSOLE", "true").lower() in {"1", "true", "yes"}:
+    from .automation_channels import channel_mode
+
+    mode = channel_mode(channel)
+    if mode == "log" or (channel == "whatsapp" and mode == "real"):
+        return ConsoleSender(channel)
+    if mode == "legacy" and os.getenv("LANDKEEP_REMINDER_CONSOLE", "true").lower() in {"1", "true", "yes"}:
         return ConsoleSender(channel)
     if channel in {"sms", "whatsapp"}:
         return TwilioSender(channel)

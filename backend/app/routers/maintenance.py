@@ -18,6 +18,8 @@ from ..database import BASE_DIR, get_db
 from ..deps import get_current_user, require_landlord, require_tenant
 from ..schemas import MaintenanceOut
 from ..services.notifications import send_notification
+from ..services.automation import acknowledge_request, tenant_messages
+from ..services.automation_channels import channel_mode
 from ..services import maintenance_chat as chat
 from ..services import maintenance_classifier as classifier
 from ..services.maintenance_storage import NOTICE_VERSION, read_private_attachment, store_maintenance_photo
@@ -118,6 +120,7 @@ def _create_request(db: Session, conversation: m.MaintenanceConversation, analys
     db.flush()
     db.add(m.MaintenanceMessage(conversation_id=conversation.id, role="bot", text=f"Your report reference is MR-{req.id:06d}. It is saved for your landlord to review.\n\nWhile you wait:\n{interim.reply}\n\nYou can keep chatting here. {chat.DISCLAIMER}"))
     db.flush()
+    acknowledge_request(db, db.get(m.User, prop.landlord_id), tenant, req)
     if analysis.urgency in {"high", "emergency"}:
         _notify_landlord(db, conversation, f"URGENT: Maintenance report MR-{req.id:06d}",
             f"Tenant: {tenant.full_name}\nProperty/unit: {prop.name}, {unit.unit_number}\nUrgency: {analysis.urgency}\nSummary: {analysis.summary}\nCause: {analysis.likely_cause}\nDetails: {suggested}\nTenant response: {answer or 'Not provided'}\nView in LandKeep.", True)
@@ -222,7 +225,9 @@ async def report_problem(
 
     unit = db.get(m.Unit, lease.unit_id)
     summary = description if len(description) <= 80 else description[:77] + "..."
-    send_notification(db, user, "maintenance_received", unit=unit.unit_number, summary=summary)
+    if all(channel_mode(channel) == "legacy" for channel in ("email", "sms", "whatsapp")) and not user.consent_recorded_at:
+        send_notification(db, user, "maintenance_received", unit=unit.unit_number, summary=summary)
+    acknowledge_request(db, db.get(m.User, unit.property.landlord_id), user, req)
     db.commit()
     db.refresh(req)
     return _request_out(db, req)
@@ -554,26 +559,16 @@ def update_request_status(request_id: int, body: dict, landlord: m.User = Depend
     status = body.get("status")
     if status not in {"received", "in_progress", "awaiting_parts", "resolved"}:
         raise HTTPException(400, "Status must be received, in_progress, awaiting_parts, or resolved")
+    if req.status == status:
+        return {"id": req.id, "status": req.status}
     req.status = status
-    if status == "resolved": req.resolved_at = m.utcnow()
+    req.resolved_at = m.utcnow() if status == "resolved" else None
+    tenant_messages(db, landlord.id, db.get(m.User, req.tenant_id), "maintenance_status",
+                    f"Maintenance update MR-{req.id:06d}",
+                    f"Your landlord updated report MR-{req.id:06d}: {status.replace('_', ' ')}.",
+                    request_id=req.id)
     if req.conversation_id:
         db.add(m.MaintenanceMessage(conversation_id=req.conversation_id, role="bot", text=f"Your landlord updated report MR-{req.id:06d}: {status.replace('_', ' ')}."))
-        conv = db.get(m.MaintenanceConversation, req.conversation_id)
-        tenant = db.get(m.User, req.tenant_id)
-        # Status acknowledgement is saved in chat; external contact delivery follows the shared sender policy.
-        settings = db.scalar(select(m.AgencyReminderSettings).where(m.AgencyReminderSettings.agency_id == landlord.id))
-        channels = settings.enabled_channels if settings else []
-        for channel in channels:
-            if channel == "email" and tenant.email_opt_in and tenant.email:
-                recipient = tenant.email
-            elif channel in {"sms", "whatsapp"} and getattr(tenant, f"{channel}_opt_in", False) and tenant.phone:
-                recipient = tenant.phone
-            else:
-                continue
-            try: send_with_retries(build_sender(channel), recipient, f"Maintenance update MR-{req.id:06d}", f"Your landlord updated your report: {status.replace('_', ' ')}.")
-            except Exception:
-                import logging
-                logging.getLogger(__name__).exception("Tenant maintenance status notification failed")
     db.commit()
     return {"id": req.id, "status": req.status}
 

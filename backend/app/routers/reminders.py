@@ -24,7 +24,9 @@ def run_manual(
     """Evaluate this agency's configured window only; never crosses agency boundaries."""
     if window_days is not None and not dry_run:
         raise HTTPException(400, "window_days overrides are available only in dry-run mode")
-    return run_reminders(db, agency_id=_landlord.id, dry_run=dry_run, window_days=window_days)
+    return run_reminders(db, agency_id=_landlord.id, dry_run=dry_run, window_days=window_days,
+                         lease_schedule=window_days is None and (
+                             os.getenv("LANDKEEP_LEASE_REMINDERS", "").lower() == "true"))
 
 
 @router.get("/log")

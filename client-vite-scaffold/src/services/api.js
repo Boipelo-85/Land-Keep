@@ -69,6 +69,7 @@ async function send(path, { method = 'GET', body, timeoutMs = 30000 } = {}) {
 const json = async (path, options) => (await send(path, options)).json()
 
 export const api = {
+  automationLog: (filters) => json('/automation/log?' + new URLSearchParams(filters)),
   login: (body) => json('/auth/login', { method: 'POST', body }),
   register: (body) => json('/auth/register', { method: 'POST', body }),
 

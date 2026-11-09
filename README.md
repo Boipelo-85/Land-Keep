@@ -1,8 +1,6 @@
 # LandKeep — start here
 
-On Windows, extract the archive and double-click **START-LANDKEEP.cmd**. Read **START-HERE.txt** for setup, demo accounts, and retaining your existing database. The launcher starts and checks both services. First launch needs Python 3.12, Node.js 24 LTS, and an internet connection.
-
-Use `landlord@landkeep.test` / `password123` for management features in a fresh demo database. There is no built-in admin@grandrest.com account.
+On Windows, extract the archive and double-click **START-LANDKEEP.cmd**. Read **START-HERE.txt** for setup and retaining your existing database. The launcher starts and checks both services. First launch needs Python 3.12, Node.js 24 LTS, and an internet connection.
 
 ---
 
@@ -24,7 +22,8 @@ Land-Keep/
 cd backend
 python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python seed.py                                        # demo data
+python -m alembic upgrade head                        # prepare the configured database
+python create_landlord.py --email you@your-company.co.za --name "Your Name"
 uvicorn app.main:app --reload                         # http://localhost:8000/docs
 ```
 
@@ -38,14 +37,7 @@ npm run dev                                           # http://localhost:5173
 
 The client calls the API through a Vite proxy (`/api` goes to `localhost:8000`), so there is nothing to configure.
 
-## Demo logins (password `password123`)
-
-| Role | Email |
-|---|---|
-| Landlord | `landlord@landkeep.test` |
-| Applicant / tenant | `applicant@landkeep.test` |
-
-## Demo story
+## Rental workflow
 
 1. Applicant: browse vacant units, apply (with consent), watch the tracker.
 2. Landlord: open the application, run the credit check, approve.
@@ -53,3 +45,4 @@ The client calls the API through a Vite proxy (`/api` goes to `localhost:8000`),
 4. Applicant: read the lease, accept it, become an active tenant.
 
 See `backend/README.md` for the API and design notes.
+See [Live automation](AUTOMATION.md) for provider setup and the notification log.

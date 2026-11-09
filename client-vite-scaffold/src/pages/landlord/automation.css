@@ -1,0 +1,8 @@
+.automation-page { display: grid; gap: 1rem; }
+.automation-page h1, .automation-page h2, .automation-page p { margin: 0; }
+.automation-fields { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }
+.automation-fields label { display: grid; gap: .25rem; }
+.automation-fields input, .automation-fields select { padding: .55rem; border: 1px solid #a7b9b2; border-radius: 6px; }
+.automation-table { overflow-x: auto; }
+.automation-table table { width: 100%; border-collapse: collapse; text-align: left; }
+.automation-table th, .automation-table td { padding: .7rem; vertical-align: top; border-bottom: 1px solid #c5d9cf; }
