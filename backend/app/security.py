@@ -21,8 +21,16 @@ TOKEN_TTL_SECONDS = 8 * 3600
 
 
 def is_fixture_account(email: str) -> bool:
-    """Keep previously seeded shared-password accounts out of the live app."""
+    """Identify accounts reserved for seeded data."""
     return email.casefold().endswith("@landkeep.test")
+
+
+def can_authenticate(email: str) -> bool:
+    if not is_fixture_account(email):
+        return True
+    return os.getenv("LANDKEEP_DEMO_LOGIN") == "true" and email.casefold() in {
+        "landlord@landkeep.test", "applicant@landkeep.test", "tenant@landkeep.test",
+    }
 
 
 def hash_password(password: str) -> str:

@@ -31,6 +31,9 @@ def message_out(row, name):
     values = {key: getattr(row, key) for key in (
         "id", "tenant_id", "kind", "channel", "direction", "status", "mode", "subject",
         "body", "error", "request_id", "provider_message_id", "answered_at")}
+    values.update(billable=row.billable, cost_estimate=row.cost_estimate,
+                  actual_cost=row.actual_cost, cost_currency=row.cost_currency,
+                  actual_cost_currency=row.actual_cost_currency)
     for key in ("created_at", "sent_at", "delivered_at", "read_at"):
         timestamp = getattr(row, key)
         values[key] = timestamp.replace(tzinfo=timezone.utc) if timestamp else None

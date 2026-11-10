@@ -70,6 +70,22 @@ const json = async (path, options) => (await send(path, options)).json()
 
 export const api = {
   automationLog: (filters) => json('/automation/log?' + new URLSearchParams(filters)),
+  previewRentReminders: (date) => json('/reminders/run?' + new URLSearchParams({
+    dry_run: 'true', ...(date ? { preview_date: date } : {}),
+  }), { method: 'POST' }),
+  simulateRentReminders: (day) => json('/reminders/simulate?' + new URLSearchParams({ day }), { method: 'POST' }),
+  reminderPreferences: (id) => json(`/lease-notifications/leases/${id}`),
+  saveReminderPreferences: (id, channels) => json(`/lease-notifications/leases/${id}`, { method: 'PUT', body: { channels } }),
+  requestReminderCode: (kind, phone) => json(`/lease-notifications/verify/${kind}/request`, { method: 'POST', body: { phone } }),
+  confirmReminderCode: (kind, code) => json(`/lease-notifications/verify/${kind}/confirm`, { method: 'POST', body: { code } }),
+  notificationInbox: () => json('/lease-notifications/inbox'),
+  reminderPolicy: () => json('/lease-notifications/settings'),
+  reminderProperties: () => json('/lease-notifications/properties'),
+  saveReminderPolicy: (body) => json('/lease-notifications/settings', { method: 'PUT', body }),
+  reminderUsage: () => json('/lease-notifications/usage'),
+  reminderCostPreview: () => json('/lease-notifications/cost-preview'),
+  pauseLeaseReminders: (id, paused) => json(`/lease-notifications/leases/${id}/pause`, { method: 'PUT', body: { paused } }),
+  recordManualPayment: (id, body) => json(`/payments/${id}/manual`, { method: 'POST', body }),
   login: (body) => json('/auth/login', { method: 'POST', body }),
   register: (body) => json('/auth/register', { method: 'POST', body }),
 

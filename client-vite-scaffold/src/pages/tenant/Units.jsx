@@ -11,7 +11,7 @@ import { money, percent } from '../../utils/format'
 function ApplyForm({ unit, onClose }) {
   const dispatch = useDispatch()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ monthly_income: '', employer: '', id_number: '', consent: false })
+  const [form, setForm] = useState({ monthly_income: '', employer: '', id_number: '', preferred_rent_date: '', consent: false })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -33,6 +33,7 @@ function ApplyForm({ unit, onClose }) {
           monthly_income: income,
           employer: form.employer || null,
           id_number: form.id_number,
+          preferred_rent_date: form.preferred_rent_date,
           consent_given: form.consent,
         }),
       ).unwrap()
@@ -66,6 +67,12 @@ function ApplyForm({ unit, onClose }) {
       <label className="field">
         <span>Employer</span>
         <input value={form.employer} onChange={set('employer')} autoComplete="organization" />
+      </label>
+
+      <label className="field">
+        <span>Preferred rent payment date</span>
+        <input type="date" value={form.preferred_rent_date} onChange={set('preferred_rent_date')} required />
+        <small>The day of the month will be suggested for your lease and rent reminders.</small>
       </label>
 
       <label className="field">

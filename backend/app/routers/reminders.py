@@ -9,7 +9,9 @@ from .. import models as m
 from ..database import get_db
 from ..deps import require_landlord, require_tenant
 from ..schemas import AgencyReminderSettingsIn, TenantReminderPreferencesIn
+from ..security import is_fixture_account
 from ..services.agency_reminders import normalize_sa_phone, run_reminders
+from ..services.lease_notifications import demo_mode, unsubscribe
 
 router = APIRouter(prefix="/reminders", tags=["rent reminders"])
 
@@ -18,15 +20,25 @@ router = APIRouter(prefix="/reminders", tags=["rent reminders"])
 def run_manual(
     dry_run: bool = Query(default=True),
     window_days: int | None = Query(default=None, ge=0, le=31),
+    preview_date: date | None = None,
     _landlord: m.User = Depends(require_landlord),
     db: Session = Depends(get_db),
 ):
     """Evaluate this agency's configured window only; never crosses agency boundaries."""
-    if window_days is not None and not dry_run:
-        raise HTTPException(400, "window_days overrides are available only in dry-run mode")
-    return run_reminders(db, agency_id=_landlord.id, dry_run=dry_run, window_days=window_days,
-                         lease_schedule=window_days is None and (
-                             os.getenv("LANDKEEP_LEASE_REMINDERS", "").lower() == "true"))
+    if (window_days is not None or preview_date is not None) and not dry_run:
+        raise HTTPException(400, "Date and window overrides are available only in dry-run mode")
+    result = run_reminders(db, agency_id=_landlord.id, day=preview_date, dry_run=dry_run,
+                           window_days=window_days, lease_schedule=window_days is None and (
+                               os.getenv("LANDKEEP_LEASE_REMINDERS", "true").lower() == "true"))
+    return {**result, "demo_landlord": is_fixture_account(_landlord.email),
+            "can_simulate": demo_mode() and is_fixture_account(_landlord.email)}
+
+
+@router.post("/simulate")
+def simulate_reminders(day: date, landlord=Depends(require_landlord), db: Session = Depends(get_db)):
+    if not demo_mode() or not is_fixture_account(landlord.email):
+        raise HTTPException(404, "Demo simulator unavailable")
+    return run_reminders(db, agency_id=landlord.id, day=day, lease_schedule=True)
 
 
 @router.get("/log")
@@ -191,9 +203,11 @@ async def twilio_inbound(request: Request, db: Session = Depends(get_db)):
                     pref = m.TenantChannelPreference(tenant_id=tenant.id)
                     db.add(pref)
                 if str(form.get("To", "")).startswith("whatsapp:"):
+                    unsubscribe(db, tenant, "whatsapp")
                     pref.whatsapp_opt_in = False
                     tenant.whatsapp_opt_in = False
                 else:
+                    unsubscribe(db, tenant, "sms")
                     pref.sms_opt_in = False
                     tenant.sms_opt_in = False
                 pref.updated_at = m.utcnow()

@@ -82,7 +82,10 @@ function nextMonthStart() {
 
 function ConvertForm({ application, busy, onConvert }) {
   const rent = application.unit.monthly_rent
-  const [form, setForm] = useState({ start_date: nextMonthStart(), term_months: '12', due_day: '1', deposit: String(rent) })
+  const preferredDay = application.preferred_rent_date?.slice(-2)
+  const [form, setForm] = useState({
+    start_date: nextMonthStart(), term_months: '12', due_day: preferredDay || '1', deposit: String(rent),
+  })
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
   function submit(e) {
@@ -111,7 +114,8 @@ function ConvertForm({ application, busy, onConvert }) {
       </label>
       <label className="field">
         <span>Rent due on day</span>
-        <input type="number" min="1" max="28" value={form.due_day} onChange={set('due_day')} required />
+        <input type="number" min="1" max="31" value={form.due_day} onChange={set('due_day')} required />
+        <small>Shorter months use the last day of the month.</small>
       </label>
       <label className="field">
         <span>Deposit (R)</span>
@@ -184,6 +188,10 @@ function Review({ id }) {
           <div>
             <dt>Rent</dt>
             <dd>{money(a.unit.monthly_rent)}</dd>
+          </div>
+          <div>
+            <dt>Preferred rent payment date</dt>
+            <dd>{a.preferred_rent_date ? fmtDate(a.preferred_rent_date) : 'Not given'}</dd>
           </div>
           <div>
             <dt>Rent as share of income</dt>
@@ -298,7 +306,7 @@ function Review({ id }) {
               act(
                 'convert',
                 convertApplication({ id, ...body }),
-                'Lease issued. The applicant was told by email and SMS and can accept it in LandKeep.',
+                'Lease issued. The applicant can review and accept it from LandKeep.',
               )
             }
           />

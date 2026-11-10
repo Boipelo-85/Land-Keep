@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import models  # noqa: F401  (registers the tables)
 from .database import Base, SessionLocal, engine
 from .routers import applications, auth, automation, contractors, leases, maintenance, payments, paystack, reminders, units
+from .routers import lease_notifications
 from .services.agency_reminders import TIMEZONE_NAME, local_today, run_reminders
 from .services.leases import generate_recurring_charges
 from .services.automation import run_followups
@@ -40,7 +41,7 @@ def scheduled_rent_reminders() -> None:
     try:
         with SessionLocal() as db:
             generate_recurring_charges(db, local_today())
-            result = run_reminders(db, lease_schedule=os.getenv("LANDKEEP_LEASE_REMINDERS", "").lower() == "true")
+            result = run_reminders(db, lease_schedule=os.getenv("LANDKEEP_LEASE_REMINDERS", "true").lower() == "true")
         logger.info("Rent reminder job completed: %s", result["summary"])
     except Exception:
         logger.exception("Rent reminder job failed")
@@ -93,7 +94,8 @@ async def lifespan(_app: FastAPI):
     scheduler = BackgroundScheduler(timezone=TIMEZONE_NAME)
     scheduler.add_job(
         scheduled_rent_reminders,
-        CronTrigger(hour=hour, minute=minute, timezone=TIMEZONE_NAME),
+        CronTrigger(hour="7-19" if os.getenv("LANDKEEP_LEASE_REMINDERS", "true").lower() == "true" else hour,
+                    minute=minute, timezone=TIMEZONE_NAME),
         id="month_end_rent_reminders",
         replace_existing=True,
         coalesce=True,
@@ -135,6 +137,7 @@ app.include_router(maintenance.router)
 app.include_router(payments.router)
 app.include_router(paystack.router)
 app.include_router(reminders.router)
+app.include_router(lease_notifications.router)
 
 
 @app.get("/health", tags=["meta"])

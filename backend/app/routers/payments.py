@@ -6,11 +6,13 @@ import json
 import os
 import re
 from urllib.parse import quote_plus
+from typing import Literal
+from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from .. import models as m
@@ -229,6 +231,37 @@ def _charge_view(db: Session, charge: m.RentCharge, lease: m.Lease) -> dict:
             "due_date": charge.due_date, "property": prop.name, "unit": unit.unit_number,
             "amount_due": float(charge.amount_due), "amount_paid": float(charge.amount_due) - float(_balance(db, charge)),
             "outstanding": float(_balance(db, charge)), "checkout": payment_readiness(db, prop.landlord_id)}
+
+
+class ManualPaymentIn(BaseModel):
+    amount: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+    method: Literal["cash", "eft"]
+    request_id: UUID
+
+
+@router.post("/{charge_id}/manual", status_code=201)
+def record_manual_payment(charge_id: int, body: ManualPaymentIn, user=Depends(require_landlord),
+                          db: Session = Depends(get_db)):
+    scoped = select(m.RentCharge.id).join(m.Lease).join(m.Unit).join(m.Property).where(
+        m.RentCharge.id == charge_id, m.Property.landlord_id == user.id)
+    result = db.execute(update(m.RentCharge).where(m.RentCharge.id.in_(scoped))
+        .values(amount_due=m.RentCharge.amount_due))
+    if not result.rowcount:
+        raise HTTPException(404, "Rent charge not found")
+    charge = db.get(m.RentCharge, charge_id)
+    reference = f"manual:{body.request_id}"
+    if db.scalar(select(m.Payment.id).where(m.Payment.charge_id == charge_id, m.Payment.reference == reference)):
+        return {"outstanding": float(_balance(db, charge))}
+    pending = db.scalar(select(m.PaymentAttempt.id).where(m.PaymentAttempt.rent_record_id == charge_id,
+        m.PaymentAttempt.status.in_(("initiated", "pending"))).limit(1))
+    if pending:
+        raise HTTPException(409, "Resolve the open online checkout before recording an offline payment")
+    if body.amount > _balance(db, charge):
+        raise HTTPException(409, "Payment exceeds the outstanding balance")
+    db.add(m.Payment(charge_id=charge_id, amount_cents=zar_to_cents(body.amount),
+                     paid_at=m.utcnow(), method=body.method, provider="manual", reference=reference))
+    db.commit()
+    return {"outstanding": float(_balance(db, charge))}
 
 
 @router.get("/mine")

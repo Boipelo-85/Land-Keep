@@ -4,6 +4,50 @@ import { api } from '../../services/api'
 import { ErrorNote, Loading, SuccessNote } from '../../components/Feedback'
 import { money, fmtDate } from '../../utils/format'
 
+function TenantBalances({ charges, onRecord, onPause, busy }) {
+  if (charges.length === 0) return <p>No rent charges yet.</p>
+  return (
+    <div className="rent-table-wrap" role="region" aria-label="Tenant balances" tabIndex={0}>
+      <table className="rent-table">
+        <thead>
+          <tr>
+            <th scope="col">Tenant</th>
+            <th scope="col">Property and unit</th>
+            <th scope="col">Rent period</th>
+            <th scope="col">Due date</th>
+            <th scope="col">Charged</th>
+            <th scope="col">Paid</th>
+            <th scope="col">Balance</th>
+            <th scope="col">Status</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {charges.map(charge => (
+            <tr key={charge.charge_id}>
+              <th scope="row">{charge.tenant}</th>
+              <td>{charge.property}, {charge.unit}</td>
+              <td>{charge.period}</td>
+              <td>{fmtDate(charge.due_date)}</td>
+              <td>{money(charge.amount_due, 2)}</td>
+              <td>{money(charge.amount_paid, 2)}</td>
+              <td>{money(charge.outstanding, 2)}</td>
+              <td>{charge.outstanding === 0 ? 'Paid' : charge.amount_paid > 0 ? 'Partially paid' : 'Unpaid'}</td>
+              <td>
+                {charge.outstanding > 0 && <button className="btn btn-quiet" disabled={busy}
+                  onClick={() => onRecord(charge)}>Record payment</button>}
+                <button className="btn btn-quiet" disabled={busy} onClick={() => onPause(charge)}>
+                  {charge.reminders_paused ? 'Resume reminders' : 'Pause reminders'}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function LandlordPayments() {
   const [data, setData] = useState(null)
   const [enabled, setEnabled] = useState(false)
@@ -11,6 +55,7 @@ export default function LandlordPayments() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const [manual, setManual] = useState(null)
   const load = useCallback(async () => {
     const result = await api.paystackAdmin()
     setData(result)
@@ -21,7 +66,13 @@ export default function LandlordPayments() {
     api.paystackAdmin().then(result => {
       if (active) { setData(result); setEnabled(result.payments_enabled) }
     }).catch(e => { if (active) setError(e.message) })
-    return () => { active = false }
+    const refresh = setInterval(() => {
+      if (document.hidden) return
+      api.paystackAdmin().then(result => {
+        if (active) setData(result)
+      }).catch(() => {})
+    }, 15000)
+    return () => { active = false; clearInterval(refresh) }
   }, [])
   async function save(event) {
     event.preventDefault()
@@ -33,6 +84,30 @@ export default function LandlordPayments() {
       setPassword('')
       await load()
       setNotice('Payment settings saved.')
+    } catch (e) { setError(e.message) }
+    finally { setBusy(false) }
+  }
+  async function record(event) {
+    event.preventDefault()
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      await api.recordManualPayment(manual.charge.charge_id, {
+        amount: manual.amount, method: manual.method, request_id: manual.requestId,
+      })
+      setManual(null)
+      await load()
+      setNotice('Payment recorded.')
+    } catch (e) { setError(e.message) }
+    finally { setBusy(false) }
+  }
+  async function pause(charge) {
+    setBusy(true)
+    setError('')
+    try {
+      await api.pauseLeaseReminders(charge.lease_id, !charge.reminders_paused)
+      await load()
     } catch (e) { setError(e.message) }
     finally { setBusy(false) }
   }
@@ -60,8 +135,26 @@ export default function LandlordPayments() {
         <p className="muted small">Card details are entered on Paystack. Secret keys are managed by the platform administrator.</p>
       </section>
       <section className="panel"><h2>Rent overview</h2><dl className="facts"><div><dt>Total charged</dt><dd>{money(totals.charged)}</dd></div><div><dt>Paid</dt><dd>{money(totals.paid)}</dd></div><div><dt>Outstanding</dt><dd>{money(totals.outstanding)}</dd></div></dl><button className="btn btn-secondary" onClick={() => load().catch(e => setError(e.message))}>Refresh payments</button></section>
-      <section className="panel"><h2>Tenant balances</h2>{data.charges.length === 0 ? <p>No rent charges yet.</p> : data.charges.map(charge => <article key={charge.charge_id} className="lease"><h3>{charge.tenant} · {charge.property}, {charge.unit}</h3><p>{charge.period} · due {fmtDate(charge.due_date)}</p><p>Charged {money(charge.amount_due)} · Paid {money(charge.amount_paid)} · Outstanding {money(charge.outstanding)}</p></article>)}</section>
-      <section className="panel"><h2>Recent payment attempts</h2><p className="muted small">Confirmed payments appear as succeeded. This confirms collection, rather than a bank payout.</p>{data.attempts.length === 0 ? <p>No payment attempts yet.</p> : data.attempts.map(attempt => <article key={attempt.reference}><h3>{attempt.tenant} · {money(attempt.amount)}</h3><p>{attempt.provider} · {attempt.status} · {fmtDate(attempt.created_at)}</p><p className="muted small">{attempt.reference}</p></article>)}</section>
+      <section className="panel">
+        <h2>Tenant balances</h2>
+        {manual && <form className="inline-form" onSubmit={record}>
+          <p>Record payment for {manual.charge.tenant} · {manual.charge.period}</p>
+          <label className="field">Amount (R)
+            <input type="number" min="0.01" max={manual.charge.outstanding} step="0.01" required
+              value={manual.amount} onChange={(e) => setManual({ ...manual, amount: e.target.value })} />
+          </label>
+          <label className="field">Method
+            <select value={manual.method} onChange={(e) => setManual({ ...manual, method: e.target.value })}>
+              <option value="cash">Cash</option><option value="eft">Bank transfer</option>
+            </select>
+          </label>
+          <button type="submit" className="btn btn-primary" disabled={busy}>Save payment</button>
+          <button type="button" className="btn btn-quiet" disabled={busy} onClick={() => setManual(null)}>Cancel</button>
+        </form>}
+        <TenantBalances charges={data.charges} busy={busy} onPause={pause} onRecord={(charge) =>
+          setManual({ charge, amount: String(charge.outstanding), method: 'cash', requestId: crypto.randomUUID() })} />
+      </section>
+      <section className="panel"><h2>Recent payment attempts</h2><p className="muted small">Checkout attempts appear here when a tenant continues to the payment provider. Confirmed payments appear as succeeded and update the tenant balance.</p>{data.attempts.length === 0 ? <p>No payment attempts yet.</p> : data.attempts.map(attempt => <article key={attempt.reference}><h3>{attempt.tenant} · {money(attempt.amount)}</h3><p>{attempt.provider} · {attempt.status} · {fmtDate(attempt.created_at)}</p><p className="muted small">{attempt.reference}</p></article>)}</section>
       {data.selected_provider !== 'paystack' && <p><Link to="/landlord/payments/payfast">Previous PayFast settings</Link></p>}
     </>}
   </>

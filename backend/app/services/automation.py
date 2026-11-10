@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from .. import models as m
 from ..security import is_fixture_account
+from .lease_notifications import inbox, send_lease_notice, unsubscribe
 from .agency_reminders import _tenant_consents
 from .automation_channels import CHANNELS, deliver
 
@@ -13,6 +14,15 @@ STOP_WORDS = {"STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"}
 
 
 def tenant_messages(db, agency_id, tenant, kind, subject, body, *, request_id=None):
+    request = db.get(m.MaintenanceRequest, request_id) if request_id else None
+    if request:
+        lease = db.scalar(select(m.Lease).where(m.Lease.tenant_id == tenant.id,
+            m.Lease.unit_id == request.unit_id, m.Lease.status == "active").order_by(m.Lease.id.desc()).limit(1))
+        prop = db.get(m.Property, db.get(m.Unit, request.unit_id).property_id)
+        if lease and prop.landlord_id == agency_id:
+            send_lease_notice(db, lease, prop, tenant, kind, subject, body, request_id=request_id)
+            return
+    inbox(db, tenant.id, subject, body, kind)
     preferences = _tenant_consents(db, tenant)
     settings = db.scalar(select(m.AgencyReminderSettings).where(m.AgencyReminderSettings.agency_id == agency_id))
     order = settings.channel_order if settings else CHANNELS
@@ -85,6 +95,7 @@ def handle_inbound(db, agency_id, tenant, body, *, message_id, reply_to=None):
     except IntegrityError:
         return "already_processed"
     if keyword in STOP_WORDS:
+        unsubscribe(db, tenant, channel, agency_id)
         consents = _tenant_consents(db, tenant)
         preferences = db.scalar(select(m.TenantChannelPreference).where(
             m.TenantChannelPreference.tenant_id == tenant.id))

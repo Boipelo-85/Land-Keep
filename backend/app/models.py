@@ -12,7 +12,7 @@ Design rules:
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import Index, func, Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, text
+from sqlalchemy import Index, func, Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -79,6 +79,7 @@ class AgencyReminderSettings(Base):
         JSON, default=lambda: ["whatsapp", "sms", "email"], nullable=False
     )
     channel_strategy: Mapped[str] = mapped_column(String(20), default="all")
+    lease_notification_policy: Mapped[Optional[dict]] = mapped_column(JSON)
     agency_name: Mapped[Optional[str]] = mapped_column(String(160))
     contact_email: Mapped[Optional[str]] = mapped_column(String(160))
     contact_phone: Mapped[Optional[str]] = mapped_column(String(30))
@@ -122,6 +123,7 @@ class TenantApplication(Base):
     applicant_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     unit_id: Mapped[int] = mapped_column(ForeignKey("units.id"), index=True)
     monthly_income: Mapped[float] = mapped_column(Float)
+    preferred_rent_date: Mapped[Optional[date]] = mapped_column(Date)
     employer: Mapped[Optional[str]] = mapped_column(String(120))
     id_number: Mapped[str] = mapped_column(String(20))
     # POPIA: a credit check needs the applicant's recorded consent
@@ -167,10 +169,35 @@ class Lease(Base):
     monthly_rent: Mapped[float] = mapped_column(Float)
     deposit: Mapped[float] = mapped_column(Float)
     due_day: Mapped[int] = mapped_column(Integer)
+    reminders_paused: Mapped[Optional[bool]] = mapped_column(Boolean)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, active, ended
     pdf_path: Mapped[Optional[str]] = mapped_column(String(255))
     accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)  # tenant accepted the lease
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class LeaseNotificationPreference(Base):
+    __tablename__ = "lease_notification_preferences"
+
+    lease_id: Mapped[int] = mapped_column(ForeignKey("leases.id"), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    channel: Mapped[str] = mapped_column(String(20), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    updated_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    source: Mapped[str] = mapped_column(String(30))
+
+
+class NotificationContactVerification(Base):
+    __tablename__ = "notification_contact_verifications"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(10), primary_key=True)
+    contact: Mapped[str] = mapped_column(String(160))
+    digest: Mapped[Optional[str]] = mapped_column(String(64))
+    requested_at: Mapped[datetime] = mapped_column(DateTime)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
 
 class RentCharge(Base):
@@ -473,6 +500,11 @@ class AutomationMessage(Base):
     request_id: Mapped[Optional[int]] = mapped_column(ForeignKey("maintenance_requests.id"), index=True)
     kind: Mapped[str] = mapped_column(String(40))
     channel: Mapped[str] = mapped_column(String(20))
+    billable: Mapped[Optional[bool]] = mapped_column(Boolean)
+    cost_estimate: Mapped[Optional[float]] = mapped_column(Numeric(12, 4))
+    actual_cost: Mapped[Optional[float]] = mapped_column(Numeric(12, 4))
+    cost_currency: Mapped[Optional[str]] = mapped_column(String(3))
+    actual_cost_currency: Mapped[Optional[str]] = mapped_column(String(3))
     direction: Mapped[str] = mapped_column(String(10))
     mode: Mapped[str] = mapped_column(String(20))
     subject: Mapped[str] = mapped_column(String(200))
@@ -486,6 +518,15 @@ class AutomationMessage(Base):
     delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     read_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     answered_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+
+class ChannelCost(Base):
+    __tablename__ = "channel_costs"
+
+    channel: Mapped[str] = mapped_column(String(20), primary_key=True)
+    effective_from: Mapped[date] = mapped_column(Date, primary_key=True)
+    cost_per_message: Mapped[float] = mapped_column(Numeric(12, 4))
+    currency: Mapped[str] = mapped_column(String(3))
 
 
 class Contractor(Base):

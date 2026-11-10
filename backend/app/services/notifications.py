@@ -3,6 +3,7 @@ import logging
 
 from sqlalchemy.orm import Session
 from .reminder_senders import ConsoleSender, build_sender, send_with_retries
+from .lease_notifications import inbox
 
 from .. import models as m
 
@@ -58,6 +59,8 @@ def send_notification(db: Session, user: m.User, template: str,
                       channels: tuple = ("email", "sms"), **context) -> list[m.Notification]:
     subject, body_template = TEMPLATES[template]
     body = body_template.format(name=user.full_name.split()[0], **context)
+    if user.role == "tenant" and template != "maintenance_received":
+        inbox(db, user.id, subject, body, f"inbox_{template}")
     sent = []
     for channel in channels:
         if channel == "sms" and not user.phone:

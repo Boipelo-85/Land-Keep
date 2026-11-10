@@ -120,7 +120,6 @@ export default function PayRent() {
           <h2>{money(selected.outstanding)}</h2>
           <p>You will enter your card details or choose an available bank-payment method on {gatewayName(selected)}’s secure checkout page.</p>
           <p className="muted small">Available methods depend on your merchant account and device. LandKeep does not collect your card number, security code, bank password, or PIN.</p>
-          {['sandbox', 'test'].includes(selected.checkout?.mode) && <p className="note">Test mode: use only payment provider test details.</p>}
           {!selected.checkout?.ready && <p className="note note-bad" role="alert">{selected.checkout?.reason || 'Payment setup is incomplete. Ask your landlord to finish Payment setup.'}</p>}
           <ErrorNote>{error}</ErrorNote>
           <div className="actions">

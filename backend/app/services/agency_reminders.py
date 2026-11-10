@@ -15,13 +15,13 @@ from sqlalchemy.orm import Session, aliased
 from .. import models as m
 from ..phone_numbers import normalize_sa_phone
 from .money import cents_to_zar, zar_to_cents
-from .reminder_senders import Sender, build_sender, send_with_retries
+from .reminder_senders import ConsoleSender, Sender, build_sender, send_with_retries
 from ..security import is_fixture_account
+from . import lease_notifications as preferences
 from .automation_channels import channel_mode, deliver
 
 TIMEZONE_NAME = os.getenv("LANDKEEP_REMINDER_TIMEZONE", "Africa/Johannesburg")
 ALLOWED_CHANNELS = ("whatsapp", "sms", "email")
-LEASE_OFFSETS = (7, 3, 1, 0, -1, -3, -7)
 
 
 def days_until_month_end(day: date) -> int:
@@ -31,6 +31,10 @@ def days_until_month_end(day: date) -> int:
 
 def local_today() -> date:
     return datetime.now(ZoneInfo(TIMEZONE_NAME)).date()
+
+
+def external_delivery_open() -> bool:
+    return 7 <= datetime.now(ZoneInfo(TIMEZONE_NAME)).hour < 20
 
 
 @dataclass(frozen=True)
@@ -83,7 +87,8 @@ def _config(db: Session, agency: m.User) -> AgencyConfig:
     )
 
 
-def find_unpaid_active_leases(db: Session, day: date, agency_id: int | None = None) -> list[Candidate]:
+def find_unpaid_active_leases(db: Session, day: date, agency_id: int | None = None,
+                             lease_id: int | None = None) -> list[Candidate]:
     """Find unpaid current-month leases, optionally constrained to one agency."""
     period = day.replace(day=1)
     month_end = date(day.year, day.month, monthrange(day.year, day.month)[1])
@@ -107,6 +112,8 @@ def find_unpaid_active_leases(db: Session, day: date, agency_id: int | None = No
     )
     if agency_id is not None:
         statement = statement.where(agency_user.id == agency_id)
+    if lease_id is not None:
+        statement = statement.where(m.Lease.id == lease_id)
 
     found = []
     for agency, tenant, lease, unit, prop in db.execute(statement):
@@ -218,7 +225,7 @@ def _existing(db: Session, candidate: Candidate, window: int, channel: str):
 
 def _write_log(db: Session, candidate: Candidate, window: int, channel: str,
                status: str, *, error: str | None = None, skip_reason: str | None = None,
-               provider_message_id: str | None = None):
+               provider_message_id: str | None = None, body: str = ""):
     row = m.AgencyRentReminderLog(
         agency_id=candidate.agency.id, tenant_id=candidate.tenant.id,
         lease_id=candidate.lease.id, period=candidate.period, window_days=window,
@@ -229,7 +236,8 @@ def _write_log(db: Session, candidate: Candidate, window: int, channel: str,
     db.add(row)
     db.add(m.AutomationMessage(agency_id=candidate.agency.id, tenant_id=candidate.tenant.id,
         channel=channel, kind="rent_reminder", direction="outbound", mode=channel_mode(channel),
-        subject="Rent reminder", body="", status=status, error=error or skip_reason))
+        subject="Rent reminder", body=body, status=status, error=error or skip_reason,
+        billable=channel in preferences.PAID_CHANNELS and not preferences.demo_mode()))
     try:
         db.commit()
     except IntegrityError:
@@ -239,13 +247,15 @@ def _write_log(db: Session, candidate: Candidate, window: int, channel: str,
 
 
 def _reserve_batch(db: Session, candidates: list[Candidate], window: int,
-                   channel: str) -> list[m.AgencyRentReminderLog] | None:
+                   channel: str, message: m.AutomationMessage | None = None) -> list[m.AgencyRentReminderLog] | None:
     """Atomically claim all lease rows backing one combined tenant/channel send."""
     rows = [m.AgencyRentReminderLog(
         agency_id=item.agency.id, tenant_id=item.tenant.id, lease_id=item.lease.id,
         period=item.period, window_days=window, channel=channel, status="pending",
     ) for item in candidates]
     db.add_all(rows)
+    if message is not None:
+        db.add(message)
     try:
         db.commit()
     except IntegrityError:
@@ -289,27 +299,23 @@ def _run_agency(db: Session, agency: m.User, day: date, dry_run: bool,
                 window_override: int | None,
                 sender_factory: Callable[[str], Sender], lease_schedule: bool) -> list[dict]:
     config = _config(db, agency)
-    windows = (LEASE_OFFSETS if config.reminders_enabled else ()) if lease_schedule else (
-        _eligible_windows(day, config, window_override, dry_run))
+    if lease_schedule:
+        return _run_lease_reminders(db, agency, day, dry_run, sender_factory, config)
+    windows = _eligible_windows(day, config, window_override, dry_run)
     if not windows:
         return []
 
-    if not lease_schedule:
-        candidates = find_unpaid_active_leases(db, day, agency_id=agency.id)
+    candidates = find_unpaid_active_leases(db, day, agency_id=agency.id)
 
     outputs: list[dict] = []
     for window in windows:
-        days_remaining = window if lease_schedule else days_until_month_end(day)
-        if lease_schedule:
-            due = day + timedelta(days=window)
-            candidates = [item for item in find_unpaid_active_leases(db, due, agency_id=agency.id)
-                          if item.due_date == due]
+        days_remaining = days_until_month_end(day)
         grouped: dict[int, list[Candidate]] = {}
         for candidate in candidates:
             grouped.setdefault(candidate.tenant.id, []).append(candidate)
         for tenant_candidates in grouped.values():
             tenant = tenant_candidates[0].tenant
-            if is_fixture_account(tenant.email):
+            if is_fixture_account(tenant.email) and not dry_run:
                 continue
             consent = _tenant_consents(db, tenant)
             selected = [channel for channel in config.channel_order
@@ -358,17 +364,6 @@ def _run_agency(db: Session, agency: m.User, day: date, dry_run: bool,
                     continue
 
                 subject, body, variables = render_message(channel, outstanding, days_remaining, config)
-                if lease_schedule:
-                    duration = f"{abs(window)} {'day' if abs(window) == 1 else 'days'}"
-                    timing = "today" if window == 0 else f"in {duration}" if window > 0 else f"{duration} ago"
-                    due = "is due" if window >= 0 else "was due"
-                    details = "; ".join(
-                        f"R {item.amount_outstanding:,.2f} for {item.unit.unit_number} at {item.property.name}"
-                        for item in outstanding)
-                    body = f"Hi {tenant.full_name}, your rent of {details} {due} {timing} ({outstanding[0].due_date:%d %B %Y})."
-                    if channel in {"sms", "whatsapp"}:
-                        body += " Reply STOP to opt out."
-                    variables = {"1": body}
                 if dry_run:
                     channel_results.append({"channel": channel, "status": "would_send", "to": contact,
                                             "subject": subject, "message": body,
@@ -433,11 +428,121 @@ def _run_agency(db: Session, agency: m.User, day: date, dry_run: bool,
     return outputs
 
 
+def _run_lease_reminders(db, agency, day, dry_run, sender_factory, config):
+    policy = preferences.policy_for(db, agency.id)
+    if not config.reminders_enabled or not policy.get("reminders_enabled", True):
+        return []
+    results = []
+    simulated = preferences.demo_mode()
+    for offset in policy.get("offsets", preferences.DEFAULT_OFFSETS):
+        due = day + timedelta(days=offset)
+        for candidate in find_unpaid_active_leases(db, due, agency_id=agency.id):
+            lease = candidate.lease
+            tenant = candidate.tenant
+            if (candidate.due_date != due or lease.reminders_paused or day > lease.end_date
+                    or (is_fixture_account(tenant.email) and not (dry_run or simulated))):
+                continue
+            selected = preferences.choices(db, lease)
+            allowed = preferences.available_channels(policy, candidate.property.id)
+            step = policy.get("steps", {}).get(str(offset),
+                preferences.EXTERNAL_CHANNELS if offset in preferences.PAID_OFFSETS else ("email",))
+            channels = ("in_app", *(channel for channel in allowed if selected[channel] and channel in step))
+            outcomes = []
+            for channel in channels:
+                if _existing(db, candidate, offset, channel):
+                    continue
+                if not dry_run:
+                    db.expire_all()
+                    fresh = next((item for item in find_unpaid_active_leases(db, due, agency_id=agency.id, lease_id=lease.id)
+                                  if item.due_date == due), None)
+                    if not fresh or fresh.lease.reminders_paused or not preferences.policy_for(db, agency.id).get("reminders_enabled", True):
+                        break
+                    candidate = fresh
+                    if channel != "in_app" and (not preferences.choices(db, lease)[channel] or
+                            channel not in preferences.available_channels(preferences.policy_for(db, agency.id), candidate.property.id)):
+                        continue
+                amount = f"R{candidate.amount_outstanding:,.2f}"
+                when = "today" if offset == 0 else f"in {offset} day{'s' if offset > 1 else ''}" if offset > 0 else f"{-offset} day{'s' if offset < -1 else ''} ago"
+                subject = "Rent reminder"
+                body = (f"Hi {tenant.full_name}, {amount} is outstanding for {candidate.unit.unit_number} "
+                        f"at {candidate.property.name}. Rent {'is' if offset >= 0 else 'was'} due {when} ({due:%d %B %Y}).")
+                if policy.get("template"):
+                    body = policy["template"].format(tenant_name=tenant.full_name, amount=amount,
+                        due_date=f"{due:%d %B %Y}", unit=candidate.unit.unit_number, property=candidate.property.name)
+                if channel != "in_app" and not preferences.verified(db, tenant, channel):
+                    reason = f"Unverified {preferences.contact_kind(channel)}"
+                    if not dry_run:
+                        _write_log(db, candidate, offset, channel, "skipped", skip_reason=reason)
+                    outcomes.append({"channel": channel, "status": "skipped", "skip_reason": reason})
+                    continue
+                if dry_run:
+                    outcomes.append({"channel": channel, "status": "would_send", "message": body})
+                    continue
+                if channel == "in_app":
+                    preferences.inbox(db, tenant.id, subject, body, "rent_reminder")
+                    _write_log(db, candidate, offset, channel, "delivered", body=body)
+                    outcomes.append({"channel": channel, "status": "delivered"})
+                    continue
+                if not simulated and not external_delivery_open():
+                    continue
+                contact, error = _contact(tenant, channel)
+                if error:
+                    _write_log(db, candidate, offset, channel, "skipped", skip_reason=error)
+                    outcomes.append({"channel": channel, "status": "skipped", "skip_reason": error})
+                    continue
+                if channel in preferences.PAID_CHANNELS:
+                    body += " Reply STOP to opt out."
+                elif link := preferences.email_optout_link(tenant.id, agency.id):
+                    body += f"\n\nUnsubscribe from rent reminder emails: {link}"
+                reservation = None
+                if channel in preferences.PAID_CHANNELS and not simulated and channel_mode(channel) != "log":
+                    price, reason = preferences.claim_paid_budget(db, agency.id, channel, datetime.now(ZoneInfo(TIMEZONE_NAME)).date())
+                    if reason:
+                        _write_log(db, candidate, offset, channel, "skipped", skip_reason=reason, body=body)
+                        outcomes.append({"channel": channel, "status": "skipped", "skip_reason": reason})
+                        continue
+                    reservation = m.AutomationMessage(agency_id=agency.id, tenant_id=tenant.id, kind="rent_reminder",
+                        channel=channel, direction="outbound", mode=channel_mode(channel), subject=subject,
+                        body=body, status="queued", billable=True, cost_estimate=price.cost_per_message,
+                        cost_currency=price.currency)
+                reserved = _reserve_batch(db, [candidate], offset, channel, reservation)
+                if reserved is None:
+                    continue
+                if not find_unpaid_active_leases(db, due, agency_id=agency.id, lease_id=lease.id):
+                    reserved[0].status = "skipped"
+                    reserved[0].skip_reason = "rent paid or lease ended"
+                    if reservation is not None:
+                        reservation.status = "skipped"
+                        reservation.error = reserved[0].skip_reason
+                    db.commit()
+                    break
+                sender = ConsoleSender(channel) if simulated else (
+                    None if sender_factory is build_sender else sender_factory(channel))
+                message = deliver(db, agency.id, tenant, "rent_reminder", channel, contact, subject, body,
+                                  sender=sender, reservation=reservation)
+                reserved[0].status = message.status
+                reserved[0].provider_message_id = message.provider_message_id
+                reserved[0].sent_at = message.sent_at
+                reserved[0].error = message.error
+                db.commit()
+                outcomes.append({"channel": channel, "status": message.status})
+            external = [outcome for outcome in outcomes if outcome["channel"] != "in_app"]
+            if not dry_run and external and all(outcome["status"] == "failed" for outcome in external):
+                preferences.inbox(db, agency.id, "Rent reminder delivery failed",
+                    f"External reminders for {tenant.full_name} failed. The reminder is in the tenant's inbox.",
+                    "reminder_delivery_failed")
+                db.commit()
+            if outcomes:
+                results.append(_tenant_output(agency, [candidate], offset, offset, outcomes))
+    return results
+
+
 def _tenant_output(agency: m.User, candidates: list[Candidate], window: int,
                    days_remaining: int, channels: list[dict]) -> dict:
     return {
         "agency_id": agency.id,
         "tenant_id": candidates[0].tenant.id,
+        "tenant": candidates[0].tenant.full_name,
         "lease_id": candidates[0].lease.id if len(candidates) == 1 else None,
         "lease_ids": [item.lease.id for item in candidates],
         "leases": [{"lease_id": item.lease.id, "property": item.property.name,
@@ -471,7 +576,10 @@ def run_reminders(db: Session, *, agency_id: int | None = None, day: date | None
     agencies_processed = 0
     for agency_key in active_agencies:
         agency = db.get(m.User, agency_key)
-        if agency is None or agency.role != "landlord" or is_fixture_account(agency.email):
+        if agency is None or agency.role != "landlord":
+            continue
+        if is_fixture_account(agency.email) and not ((dry_run and agency_id is not None) or
+                                                    (lease_schedule and preferences.demo_mode())):
             continue
         try:
             reminders.extend(_run_agency(db, agency, day, dry_run, window_days, sender_factory, lease_schedule))

@@ -341,7 +341,8 @@ def test_provider_retries_transient_server_errors_but_not_permanent_errors(monke
     assert permanent.calls == 1
 
 
-def test_manual_dry_run_is_landlord_only_and_uses_only_that_agency(client):
+def test_manual_dry_run_is_landlord_only_and_uses_only_that_agency(client, monkeypatch):
+    monkeypatch.setenv("LANDKEEP_LEASE_REMINDERS", "true")
     with SessionLocal() as db:
         agency = db.scalar(select(m.User).where(m.User.email == "landlord@test.com"))
         unit = db.scalar(select(m.Unit).where(m.Unit.unit_number == "A01"))
@@ -358,6 +359,17 @@ def test_manual_dry_run_is_landlord_only_and_uses_only_that_agency(client):
     assert client.post("/reminders/run?dry_run=true&window_days=3",
                        headers=tenant_headers).status_code == 403
     landlord_headers = auth(client, "landlord@test.com")
+    dated_url = "/reminders/run?preview_date=2026-11-02"
+    dated = client.post(dated_url, headers=landlord_headers)
+    assert dated.status_code == 200
+    reminder = dated.json()["reminders"][0]
+    assert reminder["tenant"] == "Endpoint Tenant"
+    assert reminder["leases"][0]["due_date"] == "2026-11-05"
+    assert reminder["channels"][0] == {
+        "channel": "in_app", "status": "would_send", "message": reminder["channels"][0]["message"],
+    }
+    assert reminder["channels"][1]["skip_reason"] == "Unverified email"
+    assert client.post(dated_url + "&dry_run=false", headers=landlord_headers).status_code == 400
     preview = client.post("/reminders/run?dry_run=true&window_days=3",
                           headers=landlord_headers)
     assert preview.status_code == 200

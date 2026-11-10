@@ -31,8 +31,8 @@ export function fmtDateTime(value) {
   }).format(d)
 }
 
-export const money = (n) =>
-  `R ${Number(n).toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`
+export const money = (n, fractionDigits = 0) =>
+  `R ${Number(n).toLocaleString('en-ZA', { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits })}`
 
 export const percent = (ratio) => `${Math.round(ratio * 100)}%`
 

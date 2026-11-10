@@ -1,5 +1,6 @@
 """Delivery adapters for rent reminders (all providers are lazy-loaded)."""
 from __future__ import annotations
+from decimal import Decimal, InvalidOperation
 
 import json
 import os
@@ -14,6 +15,8 @@ from typing import Protocol
 @dataclass(frozen=True)
 class DeliveryResult:
     provider_message_id: str | None = None
+    actual_cost: Decimal | None = None
+    actual_cost_currency: str | None = None
 
 
 class Sender(Protocol):
@@ -61,7 +64,14 @@ class TwilioSender:
                 content_sid=content_sid,
                 content_variables=json.dumps(template_variables or {}),
             )
-        return DeliveryResult(provider_message_id=sent.sid)
+        currency = getattr(sent, "price_unit", None)
+        try:
+            price = abs(Decimal(str(getattr(sent, "price", None))))
+        except InvalidOperation:
+            price = None
+        if price is None or not price.is_finite() or not currency or len(currency) != 3:
+            return DeliveryResult(provider_message_id=sent.sid)
+        return DeliveryResult(sent.sid, price, currency.upper())
 
 
 class SmtpEmailSender:

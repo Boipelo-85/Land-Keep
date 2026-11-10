@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from .. import models as m
 from ..database import BASE_DIR
+from .rent_reminders import due_date_for_month
 
 LEASE_DIR = BASE_DIR / "storage" / "leases"
 
@@ -96,7 +97,7 @@ def generate_charges(db: Session, lease: m.Lease, upto: date) -> int:
     while period <= last and period <= lease.end_date:
         if period not in existing:
             db.add(m.RentCharge(lease_id=lease.id, period=period, amount_due=lease.monthly_rent,
-                                due_date=max(lease.start_date, date(period.year, period.month, lease.due_day))))
+                                due_date=max(lease.start_date, due_date_for_month(lease.due_day, period))))
             count += 1
         period = add_months(period, 1)
     return count

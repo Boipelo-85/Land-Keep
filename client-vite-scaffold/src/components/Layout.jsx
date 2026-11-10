@@ -10,6 +10,7 @@ const LINKS = {
     { to: '/units', label: 'Find a unit' },
     { to: '/applications', label: 'My applications' },
     { to: '/lease', label: 'My lease' },
+    { to: '/inbox', label: 'Inbox' },
     { to: '/report', label: 'Report a problem' },
     { to: '/pay-rent', label: 'Pay rent' },
   ],
@@ -55,6 +56,7 @@ export default function Layout() {
             </span>
           ))}
           {user.role === 'landlord' && <NavLink to="/landlord/automation" className="nav-link">Notifications</NavLink>}
+          {user.role === 'landlord' && <NavLink to="/inbox" className="nav-link">Inbox</NavLink>}
         </nav>
 
         <div className="who">

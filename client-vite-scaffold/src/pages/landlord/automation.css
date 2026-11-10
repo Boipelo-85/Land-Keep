@@ -6,3 +6,4 @@
 .automation-table { overflow-x: auto; }
 .automation-table table { width: 100%; border-collapse: collapse; text-align: left; }
 .automation-table th, .automation-table td { padding: .7rem; vertical-align: top; border-bottom: 1px solid #c5d9cf; }
+.simulated-whatsapp { background: #d9fdd3; color: #183229; border-radius: 12px 12px 2px 12px; padding: .6rem .8rem; margin-top: .35rem; }

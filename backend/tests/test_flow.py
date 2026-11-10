@@ -4,23 +4,24 @@ APPLICANT = {"full_name": "Naledi Khumalo", "email": "naledi@test.com", "phone":
              "password": "password123"}
 
 
-def apply(client, unit_id=1, income=40000, consent=True, id_number="9001015800086"):
+def apply(client, unit_id=1, income=40000, consent=True, id_number="9001015800086", preferred_rent_date=None):
     reg = client.post("/auth/register", json=APPLICANT)
     headers = {"Authorization": f"Bearer {reg.json()['token']}"} if reg.status_code == 201 \
         else auth(client, APPLICANT["email"])
     res = client.post("/applications", headers=headers, json={
         "unit_id": unit_id, "monthly_income": income, "employer": "Bank",
-        "id_number": id_number, "consent_given": consent})
+        "id_number": id_number, "consent_given": consent, "preferred_rent_date": preferred_rent_date})
     return headers, res
 
 
 def test_full_flow_apply_to_active_tenant(client):
     # 1. applicant applies
-    applicant, res = apply(client)
+    applicant, res = apply(client, preferred_rent_date="2026-12-31")
     assert res.status_code == 201, res.text
     body = res.json()
     app_id = body["id"]
     assert body["reference_no"].startswith("LK-") and body["status"] == "submitted"
+    assert body["preferred_rent_date"] == "2026-12-31"
     assert body["id_number"].endswith("0086") and "9001015" not in body["id_number"]
 
     landlord = auth(client, "landlord@test.com")
@@ -39,10 +40,11 @@ def test_full_flow_apply_to_active_tenant(client):
 
     # 4. convert to tenant, lease PDF is created
     lease = client.post(f"/applications/{app_id}/convert", headers=landlord,
-                        json={"start_date": "2026-11-01", "term_months": 12, "due_day": 1})
+                        json={"start_date": "2026-11-01", "term_months": 12})
     assert lease.status_code == 201, lease.text
     lease = lease.json()
     assert lease["status"] == "pending" and lease["end_date"] == "2027-10-31"
+    assert lease["due_day"] == 31
     pdf = client.get(lease["pdf_url"], headers=applicant)
     assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
 
@@ -62,8 +64,15 @@ def test_full_flow_apply_to_active_tenant(client):
     # notifications were recorded for every step
     from app import models as m
     from app.database import SessionLocal
+    from app.services.agency_reminders import find_unpaid_active_leases
+    from datetime import date
     with SessionLocal() as s:
         templates = [n.template for n in s.query(m.Notification).order_by(m.Notification.id)]
+        charge = s.query(m.RentCharge).filter_by(lease_id=lease["id"], period=date(2026, 11, 1)).one()
+        assert charge.due_date == date(2026, 11, 30)
+        candidates = find_unpaid_active_leases(s, date(2026, 11, 23))
+        assert any(candidate.lease.id == lease["id"] and candidate.due_date == charge.due_date
+                   for candidate in candidates)
     assert "application_received" in templates and "application_approved" in templates
     assert "lease_ready" in templates and "lease_accepted_landlord" in templates
     assert templates.count("application_approved") == 2  # email + SMS

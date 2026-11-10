@@ -1053,3 +1053,19 @@ textarea {
 .chat-compose { display: grid; gap: 10px; margin-top: 16px; }
 .chat-compose textarea { width: 100%; resize: vertical; }
 .chat-transcript { white-space: pre-wrap; font: inherit; background: var(--bg); padding: 12px; border-radius: 8px; }
+.rent-table-wrap {
+  overflow-x: auto;
+}
+
+.rent-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.rent-table th,
+.rent-table td {
+  padding: 0.7rem;
+  border-bottom: 1px solid var(--border, #d1d9e2);
+  white-space: nowrap;
+}

@@ -17,9 +17,7 @@ from .. import models as m
 from ..database import BASE_DIR, get_db
 from ..deps import get_current_user, require_landlord, require_tenant
 from ..schemas import MaintenanceOut
-from ..services.notifications import send_notification
 from ..services.automation import acknowledge_request, tenant_messages
-from ..services.automation_channels import channel_mode
 from ..services import maintenance_chat as chat
 from ..services import maintenance_classifier as classifier
 from ..services.maintenance_storage import NOTICE_VERSION, read_private_attachment, store_maintenance_photo
@@ -224,9 +222,6 @@ async def report_problem(
         req.photo_path = relative
 
     unit = db.get(m.Unit, lease.unit_id)
-    summary = description if len(description) <= 80 else description[:77] + "..."
-    if all(channel_mode(channel) == "legacy" for channel in ("email", "sms", "whatsapp")) and not user.consent_recorded_at:
-        send_notification(db, user, "maintenance_received", unit=unit.unit_number, summary=summary)
     acknowledge_request(db, db.get(m.User, unit.property.landlord_id), user, req)
     db.commit()
     db.refresh(req)

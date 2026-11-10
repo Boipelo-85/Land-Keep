@@ -12,6 +12,7 @@ from ..deps import get_current_user, require_landlord, require_tenant
 from ..schemas import ConvertIn
 from ..services.leases import add_months, build_lease_pdf, generate_charges
 from ..services.notifications import send_notification
+from ..services.lease_notifications import send_lease_notice
 from .applications import load_for_user, log_status, unit_and_property
 
 router = APIRouter(tags=["leases"])
@@ -49,17 +50,20 @@ def convert_to_tenant(app_id: int, body: ConvertIn, user: m.User = Depends(requi
         raise HTTPException(409, "This unit already has a lease in progress")
 
     tenant = db.get(m.User, app.applicant_id)
+    preferred_day = app.preferred_rent_date.day if app.preferred_rent_date else 1
     lease = m.Lease(unit_id=unit.id, tenant_id=tenant.id, application_id=app.id,
                     start_date=body.start_date,
                     end_date=add_months(body.start_date, body.term_months) - timedelta(days=1),
                     monthly_rent=unit.monthly_rent,
                     deposit=body.deposit if body.deposit is not None else unit.monthly_rent,
-                    due_day=body.due_day, status="pending")
+                    due_day=body.due_day or preferred_day, status="pending")
     db.add(lease)
     db.flush()
     lease.pdf_path = build_lease_pdf(lease, unit, prop, db.get(m.User, prop.landlord_id), tenant)
     log_status(db, app, "lease_issued", "Lease agreement generated and sent to the applicant", user.id)
-    send_notification(db, tenant, "lease_ready", unit=unit.unit_number)
+    send_lease_notice(db, lease, prop, tenant, "lease_ready", "Your lease agreement is ready",
+                      f"Your lease for unit {unit.unit_number} is ready. Sign in to LandKeep to review it.",
+                      formal=True)
     db.commit()
     return lease_out(lease, unit, prop)
 

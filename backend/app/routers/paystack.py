@@ -171,7 +171,8 @@ def admin(user=Depends(require_landlord), db: Session = Depends(get_db)):
     rows = db.execute(select(m.RentCharge, m.Lease).join(m.Lease, m.Lease.id == m.RentCharge.lease_id)
         .join(m.Unit, m.Unit.id == m.Lease.unit_id).join(m.Property, m.Property.id == m.Unit.property_id)
         .where(m.Property.landlord_id == user.id).order_by(m.RentCharge.due_date.desc())).all()
-    charges = [{**_charge_view(db, charge, lease), 'tenant': db.get(m.User, lease.tenant_id).full_name} for charge, lease in rows]
+    charges = [{**_charge_view(db, charge, lease), 'tenant': db.get(m.User, lease.tenant_id).full_name,
+                'reminders_paused': bool(lease.reminders_paused)} for charge, lease in rows]
     attempts = db.scalars(select(m.PaymentAttempt).where(m.PaymentAttempt.agency_id == user.id)
         .order_by(m.PaymentAttempt.created_at.desc()).limit(100)).all()
     return {'gateway': readiness(db, user.id), 'selected_provider': os.getenv('PAYMENT_PROVIDER', 'payfast'),

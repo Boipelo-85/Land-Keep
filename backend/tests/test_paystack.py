@@ -51,6 +51,11 @@ def start(client, setup):
 def test_paystack_checkout_and_verified_settlement(client, payment_setup):
     charge_id, headers, calls = payment_setup
     reference = start(client, payment_setup)
+    landlord = auth(client, 'landlord@test.com')
+    admin = client.get('/payments/paystack/admin', headers=landlord).json()
+    assert admin['attempts'][0]['reference'] == reference
+    assert admin['attempts'][0]['status'] == 'initiated'
+    assert admin['charges'][0]['outstanding'] == 7000
     payload = calls[0][2]['json']
     assert payload['amount'] == 700000 and payload['currency'] == 'ZAR'
     assert payload['email'] == 'tenant-chat@test.com'
@@ -66,7 +71,7 @@ def test_paystack_checkout_and_verified_settlement(client, payment_setup):
     with SessionLocal() as db:
         assert db.scalar(select(func.count(m.Payment.id))) == 1
         assert db.scalar(select(m.Payment)).provider == 'paystack'
-    admin = client.get('/payments/paystack/admin', headers=auth(client, 'landlord@test.com')).json()
+    admin = client.get('/payments/paystack/admin', headers=landlord).json()
     assert admin['charges'][0]['outstanding'] == 0
     assert admin['attempts'][0]['status'] == 'succeeded'
     other = client.get('/payments/paystack/admin', headers=auth(client, 'other@test.com')).json()

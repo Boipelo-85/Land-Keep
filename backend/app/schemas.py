@@ -34,6 +34,7 @@ class LoginIn(BaseModel):
 class ApplicationIn(BaseModel):
     unit_id: int
     monthly_income: float = Field(gt=0)
+    preferred_rent_date: Optional[date] = None
     employer: Optional[str] = Field(default=None, max_length=120)
     id_number: str = Field(pattern=r"^\d{13}$", description="13-digit South African ID number")
     consent_given: bool
@@ -48,7 +49,7 @@ class ConvertIn(BaseModel):
     start_date: date
     term_months: int = Field(default=12, ge=1, le=36)
     deposit: Optional[float] = Field(default=None, ge=0)  # defaults to one month's rent
-    due_day: int = Field(default=1, ge=1, le=28)
+    due_day: Optional[int] = Field(default=None, ge=1, le=31)
 
 
 class MaintenanceOut(BaseModel):

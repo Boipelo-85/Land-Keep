@@ -59,6 +59,7 @@ def serialize(db: Session, app: m.TenantApplication, timeline: bool = False) -> 
         "applicant": {"id": applicant.id, "full_name": applicant.full_name,
                       "email": applicant.email, "phone": applicant.phone},
         "monthly_income": app.monthly_income,
+        "preferred_rent_date": app.preferred_rent_date,
         "employer": app.employer,
         "id_number": "*" * 9 + app.id_number[-4:],  # POPIA: show only what is needed
         "rent_to_income": round(unit.monthly_rent / app.monthly_income, 2),
@@ -92,6 +93,7 @@ def submit_application(body: ApplicationIn, user: m.User = Depends(require_tenan
 
     app = m.TenantApplication(reference_no=uuid.uuid4().hex[:30], applicant_id=user.id, unit_id=unit.id,
                               monthly_income=body.monthly_income, employer=body.employer,
+                              preferred_rent_date=body.preferred_rent_date,
                               id_number=body.id_number, consent_given=True,
                               consent_at=m.utcnow(), status="submitted")
     db.add(app)

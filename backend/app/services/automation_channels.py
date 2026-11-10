@@ -7,7 +7,7 @@ from typing import Protocol
 import httpx
 
 from .. import models as m
-from .reminder_senders import DeliveryResult, build_sender, send_with_retries
+from .reminder_senders import ConsoleSender, DeliveryResult, build_sender, send_with_retries
 
 CHANNELS = ("whatsapp", "sms", "email")
 DELIVERY_RANK = {"queued": 0, "sent": 1, "failed": 2, "delivered": 3, "read": 4}
@@ -74,11 +74,11 @@ class MetaWhatsAppChannel:
 
 
 def deliver(db, agency_id, tenant, kind, channel, recipient, subject, body, *,
-            request_id=None, dedupe_key=None, template_variables=None, sender=None):
-    mode = channel_mode(channel)
-    row = m.AutomationMessage(agency_id=agency_id, tenant_id=tenant.id, kind=kind,
+            request_id=None, dedupe_key=None, template_variables=None, sender=None, reservation=None):
+    mode = "log" if isinstance(sender, ConsoleSender) else channel_mode(channel)
+    row = reservation or m.AutomationMessage(agency_id=agency_id, tenant_id=tenant.id, kind=kind,
         channel=channel, direction="outbound", mode=mode, subject=subject, body=body,
-        request_id=request_id, dedupe_key=dedupe_key, status="queued")
+        request_id=request_id, dedupe_key=dedupe_key, status="queued", billable=channel in {"sms", "whatsapp"} and mode != "log")
     db.add(row)
     if dedupe_key:
         db.flush()
@@ -87,7 +87,7 @@ def deliver(db, agency_id, tenant, kind, channel, recipient, subject, body, *,
         row.error = "No contact on file"
         return row
     try:
-        if channel == "whatsapp" and mode == "real":
+        if sender is None and channel == "whatsapp" and mode == "real":
             adapter = MetaWhatsAppChannel(f"landkeep_{kind}")
             result = adapter.send(recipient, subject, body, template_variables={"1": body})
         else:
@@ -97,6 +97,8 @@ def deliver(db, agency_id, tenant, kind, channel, recipient, subject, body, *,
         if row.status == "queued":
             row.status = "sent"
         row.provider_message_id = result.provider_message_id
+        row.actual_cost = getattr(result, "actual_cost", None)
+        row.actual_cost_currency = getattr(result, "actual_cost_currency", None)
     except (ValueError, RuntimeError) as exc:
         row.status = "failed"
         row.error = str(exc)[:300] if channel == "whatsapp" and mode == "real" else "Provider delivery failed"

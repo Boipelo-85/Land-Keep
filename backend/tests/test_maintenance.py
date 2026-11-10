@@ -53,8 +53,11 @@ def test_report_without_photo(client):
     assert len(mine) == 1 and mine[0]["id"] == body["id"]
 
     with SessionLocal() as s:
-        templates = [n.template for n in s.query(m.Notification).all()]
-    assert templates.count("maintenance_received") == 2  # email + SMS
+        notices = s.query(m.Notification).filter_by(template="maintenance_received").all()
+        assert [notice.channel for notice in notices] == ["in_app"]
+        email = s.query(m.AutomationMessage).filter_by(kind="maintenance_received", channel="email").one()
+        assert email.status == "skipped"
+        assert email.error == "unverified email"
 
 
 def test_report_with_photo(client):

@@ -9,6 +9,7 @@ import Units from './pages/tenant/Units'
 import MyApplications from './pages/tenant/MyApplications'
 import ApplicationDetail from './pages/tenant/ApplicationDetail'
 import MyLease from './pages/tenant/MyLease'
+import NotificationInbox from './pages/tenant/NotificationInbox'
 import Report from './pages/tenant/Report'
 import LandlordContractors from './pages/landlord/LandlordContractors'
 import LandlordUnits from './pages/landlord/LandlordUnits'
@@ -48,6 +49,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route index element={<Home />} />
+          <Route path="inbox" element={<NotificationInbox />} />
 
           <Route element={<ProtectedRoute role="tenant" />}>
             <Route path="units" element={<ApplicantUnits />} />
