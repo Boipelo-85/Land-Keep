@@ -16,6 +16,5 @@ def ensure_secret():
     set_key(path, "LANDKEEP_SECRET", secrets.token_urlsafe(48))
     print("Created a private login signing key in backend/.env.")
 
-
 if __name__ == "__main__":
     ensure_secret()

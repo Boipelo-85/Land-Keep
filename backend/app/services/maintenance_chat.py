@@ -354,6 +354,20 @@ def fallback_analysis(*, send_to_landlord: bool = False, user_text: str = "") ->
                     likely_cause="Unknown", confidence=0, diy_appropriate=False)
 
 
+def unavailable_reply(result: Analysis, *, has_photos: bool, photo_only: bool) -> str:
+    if photo_only:
+        return result.reply
+    if has_photos:
+        return f"I couldn't inspect the photos just now. Here's what I can suggest from the chat.\n\n{result.reply}"
+    return f"Live AI is unavailable right now. {result.reply}"
+
+
+def analysis_timeout(has_photos: bool) -> float:
+    if has_photos:
+        return 30.0
+    return max(0.1, min(float(os.getenv("MAINTENANCE_AI_TIMEOUT_SECONDS", "12")), 15))
+
+
 def analyze_with_ai(text: str, image_paths: list[str], *, escalated: bool = False) -> Analysis:
     """Assess text and private photos with Gemini; failures use the caller's local fallback."""
     import httpx
@@ -361,12 +375,13 @@ def analyze_with_ai(text: str, image_paths: list[str], *, escalated: bool = Fals
     key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
         raise RuntimeError("GEMINI_API_KEY is not configured")
-    model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
+    model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
     if not re.fullmatch(r"[a-zA-Z0-9._-]+", model):
         raise ValueError("Invalid Gemini model name")
     parts: list[dict[str, Any]] = [{"text": text}]
-    for path in image_paths:
+    for number, path in enumerate(image_paths, start=1):
         media = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}[Path(path).suffix.lower()]
+        parts.append({"text": f"Photo {number}:"})
         parts.append({"inlineData": {"mimeType": media, "data": base64.b64encode(read_private_attachment(path)).decode("ascii")}})
     system_prompt = PROMPT_PATH.read_text(encoding="utf-8")
     if escalated:
@@ -388,8 +403,10 @@ def analyze_with_ai(text: str, image_paths: list[str], *, escalated: bool = Fals
     response = httpx.post(
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
         headers={"x-goog-api-key": key}, json=payload,
-        timeout=min(float(os.getenv("MAINTENANCE_AI_TIMEOUT_SECONDS", "12")), 15),
+        timeout=analysis_timeout(bool(image_paths)),
     )
+    if not response.is_success:
+        logger.warning("Gemini model %s returned HTTP %s", model, response.status_code)
     response.raise_for_status()
     try:
         candidates = response.json().get("candidates", [])
@@ -408,12 +425,11 @@ def analyze_with_ai(text: str, image_paths: list[str], *, escalated: bool = Fals
         if result.category == "electrical":
             result.reply = "Electrical problems can be dangerous. Please do not touch wiring or electrical equipment. I recommend your landlord or a qualified electrician assess it."
     result.reply = result.reply.strip()
-    if DISCLAIMER.lower() not in result.reply.lower():
-        result.reply = f"{result.reply} {DISCLAIMER}"
-    if result.needs_follow_up and result.follow_up_question:
-        result.reply += f"\n\n{result.follow_up_question}"
-    elif result.diy_appropriate and not escalated:
-        result.reply += "\n\nDid that solve it?"
+    question = (result.follow_up_question or "").strip()
+    if result.needs_follow_up and question and "?" not in result.reply:
+        result.reply += f"\n\n{question}"
+    if result.diy_appropriate and DISCLAIMER.lower() not in result.reply.lower():
+        result.reply += f"\n\n{DISCLAIMER}"
     return result
 
 

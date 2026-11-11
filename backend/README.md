@@ -167,7 +167,7 @@ Create a Gemini API key in Google AI Studio and put it only in `backend/.env`:
 
 ```env
 GEMINI_API_KEY=your_private_key
-GEMINI_MODEL=gemini-3.8-flash
+GEMINI_MODEL=gemini-3.1-flash-lite
 ```
 
 Restart the backend after changing settings. Text and consented photos are sent

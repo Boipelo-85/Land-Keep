@@ -1,5 +1,6 @@
 import asyncio
 """Tenant maintenance reports: describe a problem, optionally attach a photo."""
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
@@ -27,8 +28,22 @@ from ..security import SECRET
 router = APIRouter(tags=["maintenance"])
 
 
+def _chat_transcript(db: Session, conversation_id: int, photo_numbers: dict[int, list[int]]) -> str:
+    history = db.scalars(select(m.MaintenanceMessage).where(
+        m.MaintenanceMessage.conversation_id == conversation_id
+    ).order_by(m.MaintenanceMessage.created_at.desc(), m.MaintenanceMessage.id.desc()).limit(60)).all()
+    turns = []
+    for message in reversed(history):
+        numbers = photo_numbers.get(message.id, [])
+        turns.append(f"{message.role}: {message.text}")
+        if numbers:
+            turns.append(f"[Photos attached to this turn: {', '.join(map(str, numbers))}]")
+    return "\n".join(turns)
+
+
 async def _analyze_with_deadline(text, paths, **kwargs):
-    if not paths and os.getenv("LANDKEEP_LOCAL_COMPLAINTS", "true").lower() == "true":
+    local_default = "false" if os.getenv("GEMINI_API_KEY", "").strip() else "true"
+    if not paths and os.getenv("LANDKEEP_LOCAL_COMPLAINTS", local_default).lower() == "true":
         from ..services.tenant_complaints import predict_reply
         turns = [line.split("tenant:", 1)[1].strip() for line in text.splitlines() if line.startswith("tenant:")]
         latest = turns[-1] if turns else text
@@ -42,7 +57,7 @@ async def _analyze_with_deadline(text, paths, **kwargs):
                 result._from_local = True
                 return result
     # Bound the whole AI wait, including connection time, rather than each socket read.
-    seconds = max(0.1, min(float(os.getenv("MAINTENANCE_AI_TIMEOUT_SECONDS", "12")), 15))
+    seconds = chat.analysis_timeout(bool(paths))
     return await asyncio.wait_for(run_in_threadpool(chat.analyze_with_ai, text, paths, **kwargs), timeout=seconds)
 
 PHOTO_DIR = BASE_DIR / "storage" / "maintenance"
@@ -332,11 +347,15 @@ async def conversation_message(conversation_id: int, text: str = Form(""), photo
     db.flush()
     # Keep earlier photos available for follow-ups, but honour withdrawn consent.
     ai_paths = []
+    photo_numbers = defaultdict(list)
     if row.photo_sharing_consent and row.photo_sharing_notice_version == NOTICE_VERSION:
-        ai_paths = list(db.scalars(select(m.MaintenanceAttachment.storage_path)
+        attachments = db.execute(select(m.MaintenanceAttachment.message_id, m.MaintenanceAttachment.storage_path)
             .join(m.MaintenanceMessage)
             .where(m.MaintenanceMessage.conversation_id == row.id)
-            .order_by(m.MaintenanceMessage.created_at, m.MaintenanceMessage.id, m.MaintenanceAttachment.id)).all())
+            .order_by(m.MaintenanceMessage.created_at, m.MaintenanceMessage.id, m.MaintenanceAttachment.id))
+        for number, (message_id, storage_path) in enumerate(attachments, start=1):
+            ai_paths.append(storage_path)
+            photo_numbers[message_id].append(number)
     try:
         if not photos and chat.normalize_message(text) in {"hi", "hey", "hy", "hello", "good morning", "good afternoon", "good evening"}:
             assistant_mode = "instant"
@@ -354,9 +373,7 @@ async def conversation_message(conversation_id: int, text: str = Form(""), photo
             req = db.scalar(select(m.MaintenanceRequest).where(m.MaintenanceRequest.conversation_id == row.id))
             if req and text:
                 req.tried_self_help = ((req.tried_self_help or "") + f"\n{user.full_name} follow-up: {text}").strip()
-            history = db.scalars(select(m.MaintenanceMessage).where(
-                m.MaintenanceMessage.conversation_id == row.id).order_by(m.MaintenanceMessage.created_at.desc(), m.MaintenanceMessage.id.desc()).limit(60)).all()
-            transcript = "\n".join(f"{item.role}: {item.text}" for item in reversed(history))
+            transcript = _chat_transcript(db, row.id, photo_numbers)
             try:
                 # Release SQLite write locks before the slow external AI request.
                 db.commit()
@@ -372,9 +389,7 @@ async def conversation_message(conversation_id: int, text: str = Form(""), photo
                 import logging
                 logging.getLogger(__name__).warning("Escalated chat AI analysis failed: %s", type(exc).__name__)
                 local_result = chat.conversational_fallback(transcript, escalated=True)
-                reply = "Live AI is unavailable right now. " + local_result.reply
-                if ai_paths:
-                    reply = "Photo analysis is unavailable right now, so I cannot inspect your pictures. Please describe what you want me to check. " + reply
+                reply = chat.unavailable_reply(local_result, has_photos=bool(ai_paths), photo_only=not text)
                 if req and local_result.urgency in {"high", "emergency"} and req.ai_urgency not in {"high", "emergency"}:
                     req.ai_urgency = local_result.urgency
                     req.ai_category = local_result.category
@@ -395,9 +410,7 @@ async def conversation_message(conversation_id: int, text: str = Form(""), photo
         else:
             needs_human_review = False
             try:
-                history = db.scalars(select(m.MaintenanceMessage).where(
-                    m.MaintenanceMessage.conversation_id == row.id).order_by(m.MaintenanceMessage.created_at.desc(), m.MaintenanceMessage.id.desc()).limit(60)).all()
-                transcript = "\n".join(f"{item.role}: {item.text}" for item in reversed(history))
+                transcript = _chat_transcript(db, row.id, photo_numbers)
                 # Persist the message/photos without holding a writer lock during AI latency.
                 db.commit()
                 result = await _analyze_with_deadline(transcript or text or "Please assess the attached maintenance photo.", ai_paths)
@@ -412,13 +425,12 @@ async def conversation_message(conversation_id: int, text: str = Form(""), photo
                 import logging
                 logging.getLogger(__name__).warning("AI analysis failed with exception: %s", type(exc).__name__)
                 result = chat.conversational_fallback(transcript)
-                result.reply = "Live AI is unavailable right now. " + result.reply
-                if ai_paths:
-                    result.reply = "Photo analysis is unavailable right now, so I cannot inspect your pictures. Please describe what you want me to check. " + result.reply
+                result.reply = chat.unavailable_reply(result, has_photos=bool(ai_paths), photo_only=not text)
                 assistant_mode = "local"
             db.add(m.MaintenanceMessage(conversation_id=row.id, role="bot", text=result.reply))
             db.flush()
-            if needs_human_review or result.urgency in {"high", "emergency"} or (not result.diy_appropriate and result.confidence >= 0.7):
+            confident_text_referral = not ai_paths and not result.diy_appropriate and result.confidence >= 0.7
+            if needs_human_review or result.urgency in {"high", "emergency"} or confident_text_referral:
                 _create_request(db, row, result)
         db.commit()
     except Exception:

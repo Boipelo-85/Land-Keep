@@ -294,7 +294,7 @@ def test_photo_context_survives_followups_and_honours_revoked_consent(client, mo
 
     def analyze(text, paths, **kwargs):
         calls.append((text, list(paths), kwargs))
-        return maintenance_chat.Analysis(reply="Which part of this fixture concerns you?", category="other", urgency="low", summary="Photo follow-up", likely_cause="Not established", confidence=0.4, diy_appropriate=False)
+        return maintenance_chat.Analysis(reply="Which part of this fixture concerns you?", category="other", urgency="low", summary="Photo follow-up", likely_cause="Not established", confidence=0.9, diy_appropriate=False)
 
     monkeypatch.setattr(maintenance_chat, "analyze_with_ai", analyze)
     buffer = BytesIO()
@@ -302,6 +302,8 @@ def test_photo_context_survives_followups_and_honours_revoked_consent(client, mo
     url = f"/maintenance/conversations/{cid}/messages"
     response = client.post(url, data={"text": "Look at this fixture"}, files={"photos": ("fixture.png", buffer.getvalue(), "image/png")}, headers=headers)
     assert response.status_code == 200
+    assert response.json()["status"] == "open"
+    assert "tenant: Look at this fixture\n[Photos attached to this turn: 1]" in calls[-1][0]
     assert len(calls[-1][1]) == 1
     original_paths = calls[-1][1]
     response = client.post(url, data={"text": "Check the picture hey"}, headers=headers)
@@ -335,7 +337,7 @@ def test_photo_provider_failure_is_explained(client, monkeypatch, tmp_path):
     response = client.post(f"/maintenance/conversations/{cid}/messages", files={"photos": ("fixture.png", buffer.getvalue(), "image/png")}, headers=headers)
     assert response.status_code == 200
     assert response.json()["assistant_mode"] == "local"
-    assert "cannot inspect your pictures" in response.json()["messages"][-1]["text"]
+    assert "can't inspect images" in response.json()["messages"][-1]["text"]
 
 
 def test_ai_wait_does_not_hold_database_write_lock(client, monkeypatch):
